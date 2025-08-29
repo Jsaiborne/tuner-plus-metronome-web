@@ -3,7 +3,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { createWorker } from "./MetronomeWorker";
-import { useAudioContext } from "./AudioContextProvider";
+import { useAudioContext } from "../context/AudioContextProvider";
 import { Poppins, Inter } from "next/font/google";
 
 // Fonts
