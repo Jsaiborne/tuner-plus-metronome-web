@@ -9,35 +9,27 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      # 1. Checkout code
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: "npm"
 
-      # 3. Install dependencies
       - name: Install dependencies
         run: npm ci
 
-      # 4. Build Next.js app (static export)
-      - name: Build static site
-        run: |
-          npx next build
-          npx next export
+      - name: Build Next.js app
+        run: npx next build
 
-      # 5. Verify out/ folder
       - name: Verify out folder
         run: |
           echo "Listing out/ contents..."
           ls -la out
           test -f out/index.html || (echo "No index.html found!" && exit 1)
 
-      # 6. Upload via SCP
       - name: Upload to server
         uses: appleboy/scp-action@v0.1.6
         with:
