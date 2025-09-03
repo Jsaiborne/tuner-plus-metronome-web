@@ -1,0 +1,21 @@
+$yaml = @'
+name: Minimal Deploy Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  hello:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "hello from minimal workflow"
+'@
+
+$path = (Resolve-Path .github\workflows\deploy-scp.yml).Path
+[System.IO.File]::WriteAllText($path, $yaml, New-Object System.Text.UTF8Encoding($false))
+
+git add .github/workflows/deploy-scp.yml
+git commit -m "chore: add minimal workflow for validation" || Write-Output "no changes to commit"
+git push origin main
