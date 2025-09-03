@@ -1,4 +1,4 @@
-name: Test Deploy SSH
+name: Test Deploy SSH (fixed)
 
 on:
   push:
@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      out-path: out
     steps:
       - name: Create dummy site
         run: |
@@ -30,8 +32,33 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Upload via SCP (only if SSH secrets are configured)
-        if: ${{ secrets.SSH_HOST != '' && secrets.SSH_USER != '' && secrets.SSH_PRIVATE_KEY != '' && secrets.SSH_TARGET != '' }}
+      # copy the built files into the workspace so the upload step can find them
+      - name: Copy out/ from build (workspace)
+        run: |
+          # build job produced out/ in the same workspace on the runner
+          # if your real build is in the same job you won't need this
+          ls -la out || true
+
+      # Check secrets at run-time (secrets are safe to reference inside 'run')
+      - name: Check SSH secrets presence
+        id: check
+        run: |
+          # Use environment variables set from secrets for clarity
+          echo "SSH_HOST='${{ secrets.SSH_HOST }}'"
+          if [ -n "${{ secrets.SSH_HOST }}" ] && \
+             [ -n "${{ secrets.SSH_USER }}" ] && \
+             [ -n "${{ secrets.SSH_PRIVATE_KEY }}" ] && \
+             [ -n "${{ secrets.SSH_TARGET }}" ]; then
+            echo "upload=true" >> $GITHUB_OUTPUT
+          else
+            echo "upload=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Debug check output
+        run: echo "upload=${{ steps.check.outputs.upload }}"
+
+      - name: Upload via SCP
+        if: ${{ steps.check.outputs.upload == 'true' }}
         uses: appleboy/scp-action@v0.1.6
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -41,7 +68,7 @@ jobs:
           source: "out/*"
           target: ${{ secrets.SSH_TARGET }}
 
-      - name: Skip upload note
-        if: ${{ !(secrets.SSH_HOST != '' && secrets.SSH_USER != '' && secrets.SSH_PRIVATE_KEY != '' && secrets.SSH_TARGET != '') }}
+      - name: Skip upload message
+        if: ${{ steps.check.outputs.upload != 'true' }}
         run: |
-          echo "SSH secrets not found. To enable upload, add SSH_HOST, SSH_USER, SSH_PRIVATE_KEY and SSH_TARGET in Repository -> Settings -> Secrets."
+          echo "SSH secrets missing or empty. To enable upload, add SSH_HOST, SSH_USER, SSH_PRIVATE_KEY and SSH_TARGET in Repository → Settings → Secrets."
