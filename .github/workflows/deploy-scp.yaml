@@ -1,4 +1,4 @@
-name: Build and Deploy (SCP)
+name: Build and Deploy (FTP)
 
 on:
   push:
@@ -30,12 +30,12 @@ jobs:
           ls -la out
           test -f out/index.html || (echo "No index.html found!" && exit 1)
 
-      - name: Upload to server
-        uses: appleboy/scp-action@v0.1.6
+      - name: Upload to server (FTP)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT || '22' }}
-          source: "out/*"
-          target: ${{ secrets.SSH_TARGET }}
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          port: ${{ secrets.FTP_PORT }} # usually 21
+          server-dir: ${{ secrets.FTP_TARGET }}
+          local-dir: ./out
