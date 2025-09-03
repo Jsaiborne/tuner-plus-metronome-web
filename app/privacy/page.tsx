@@ -57,7 +57,7 @@ export default function PrivacyPolicy() {
       <h2 className="text-xl font-semibold mt-6 mb-2">Contact</h2>
       <p>
         If you have any questions about this Privacy Policy, you may contact us
-        at: <span className="font-medium">[your email or contact form link]</span>
+        at: <span className="font-medium">bahehdowski@gmail.com</span>
       </p>
     </div>
   );

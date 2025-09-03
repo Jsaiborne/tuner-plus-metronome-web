@@ -56,7 +56,7 @@ of the courts located in India.
       <h2 className="text-xl font-semibold mt-6 mb-2">Contact</h2>
       <p>
         If you have any questions about these Terms of Use, please contact us at:{" "}
-        <span className="font-medium">[your email or contact form link]</span>.
+        <span className="font-medium">bahehdowski@gmail.com</span>.
       </p>
     </div>
   );

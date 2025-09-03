@@ -251,6 +251,7 @@ export default function TunerWorklet() {
 
   // analyser
   const analyserRef = useRef<AnalyserNode | null>(null);
+  // use the plain Float32Array type (no generic) to avoid platform-generic mismatch
   const freqDataRef = useRef<Float32Array | null>(null);
 
   // raw/live refs
@@ -669,6 +670,7 @@ export default function TunerWorklet() {
     analyser.smoothingTimeConstant = 0;
     source.connect(analyser);
     analyserRef.current = analyser;
+    // create a plain typed Float32Array (no generics)
     freqDataRef.current = new Float32Array(analyser.frequencyBinCount);
 
     const node = new AudioWorkletNode(audioCtx, "yin-processor", {
@@ -685,6 +687,7 @@ export default function TunerWorklet() {
       channelCount: 1
     });
 
+    // Use explicit typed message event and robust null checks
     node.port.onmessage = (ev: MessageEvent) => {
       const msg = ev.data as WorkletMsg;
       if (!msg || msg.type !== "pitch") return;
@@ -693,11 +696,16 @@ export default function TunerWorklet() {
       const reportedProb = msg.probability;
       const reportedRms = msg.rms;
 
-      if (reportedFreq && analyserRef.current && freqDataRef.current) {
-        const analyserLocal = analyserRef.current;
-        const freqData = freqDataRef.current;
+      const analyserLocal = analyserRef.current;
+      const freqData = freqDataRef.current;
+      const audioCtxLocal = audioCtxRef.current;
+
+      // Only proceed if we have the analyser, typed array and audioCtx
+      if (reportedFreq != null && analyserLocal && freqData && audioCtxLocal) {
+        // pass the plain Float32Array directly — no weird generic casts
+        // @ts-ignore: library DOM typing mismatch (ArrayBufferLike vs ArrayBuffer)
         analyserLocal.getFloatFrequencyData(freqData);
-        const sampleRate = audioCtx.sampleRate;
+        const sampleRate = audioCtxLocal.sampleRate;
         const fftSize = analyserLocal.fftSize;
 
         const readDbAt = (freqVal: number) => {
@@ -749,7 +757,7 @@ export default function TunerWorklet() {
         centsRef.current = Number(freqToNoteName(finalFreq, refARef.current).cents);
 
         // smoothing
-        if (finalFreq && reportedProb >= PROB_THRESHOLD_DISPLAY) {
+        if (finalFreq != null && reportedProb >= PROB_THRESHOLD_DISPLAY) {
           if (smoothedFreqRef.current == null) smoothedFreqRef.current = finalFreq;
           else smoothedFreqRef.current = smoothedFreqRef.current * (1 - NUMERIC_FREQ_ALPHA) + finalFreq * NUMERIC_FREQ_ALPHA;
 
@@ -782,8 +790,8 @@ export default function TunerWorklet() {
         }
 
       } else {
-        // fallback
-        if (reportedFreq && reportedProb > 0.01) {
+        // fallback (less precise path when analyser not ready)
+        if (reportedFreq != null && reportedProb > 0.01) {
           freqRef.current = reportedFreq;
           probRef.current = reportedProb;
           rmsRef.current = reportedRms;
