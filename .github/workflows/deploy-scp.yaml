@@ -1,21 +1,47 @@
-$yaml = @'
-name: Minimal Deploy Test
+name: Test Deploy SSH
 
 on:
-  workflow_dispatch:
   push:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
-  hello:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "hello from minimal workflow"
-'@
+      - name: Create dummy site
+        run: |
+          mkdir -p out
+          cat > out/index.html <<'HTML'
+          <!doctype html>
+          <html>
+            <head><meta charset="utf-8"><title>Test Deploy</title></head>
+            <body><h1>Hello from GitHub Actions 🚀</h1></body>
+          </html>
+          HTML
 
-$path = (Resolve-Path .github\workflows\deploy-scp.yml).Path
-[System.IO.File]::WriteAllText($path, $yaml, New-Object System.Text.UTF8Encoding($false))
+      - name: Show out/ contents
+        run: ls -la out
 
-git add .github/workflows/deploy-scp.yml
-git commit -m "chore: add minimal workflow for validation" || Write-Output "no changes to commit"
-git push origin main
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Upload via SCP (only if SSH secrets are configured)
+        if: ${{ secrets.SSH_HOST != '' && secrets.SSH_USER != '' && secrets.SSH_PRIVATE_KEY != '' && secrets.SSH_TARGET != '' }}
+        uses: appleboy/scp-action@v0.1.6
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || '22' }}
+          source: "out/*"
+          target: ${{ secrets.SSH_TARGET }}
+
+      - name: Skip upload note
+        if: ${{ !(secrets.SSH_HOST != '' && secrets.SSH_USER != '' && secrets.SSH_PRIVATE_KEY != '' && secrets.SSH_TARGET != '') }}
+        run: |
+          echo "SSH secrets not found. To enable upload, add SSH_HOST, SSH_USER, SSH_PRIVATE_KEY and SSH_TARGET in Repository -> Settings -> Secrets."
