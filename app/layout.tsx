@@ -12,10 +12,7 @@ export const metadata = {
       { url: "/favicon.svg", type: "image/svg+xml" },
     ],
     apple: "/apple-touch-icon.png",
-    other: {
-      "google-adsense-account": "ca-pub-6697797530499072", 
-    },  
-  },
+     },
   openGraph: {
     title: "Tuner + Metronome App",
     description: "Free online tuner and metronome for musicians — fast, simple, and built for practice.",
@@ -42,6 +39,9 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
+       <head>
+        <meta name="google-adsense-account" content="ca-pub-6697797530499072" />
+      </head>
       <body className="min-h-screen bg-gray-50 text-gray-900 antialiased">
         {/* Skip link for accessibility */}
         <a href="#content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:bg-white focus:px-3 focus:py-2 focus:rounded shadow">Skip to content</a>
