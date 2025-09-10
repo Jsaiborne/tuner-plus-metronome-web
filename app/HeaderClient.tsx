@@ -44,7 +44,7 @@ export default function HeaderClient() {
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-4">
             <Link href="/" className={linkClass("/")}>Tuner</Link>
-            <Link href="/metronome" className={linkClass("/metronome")}>Metronome</Link>
+            <Link href="/metronome/" className={linkClass("/metronome")}>Metronome</Link>
           </nav>
 
           {/* Mobile menu button */}

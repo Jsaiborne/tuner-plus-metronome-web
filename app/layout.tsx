@@ -54,10 +54,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-600">
             <div>© {new Date().getFullYear()} Tuner & Metronome — Built with ❤️</div>
             <div className="flex items-center gap-4">
-              <a href="/privacy" className="hover:underline">Privacy</a>
-              <a href="/terms" className="hover:underline">Terms</a>
-              <a href="/about" className="hover:underline">About</a>
-              <a href="/contact" className="hover:underline">Contact</a>
+              <a href="/privacy/" className="hover:underline">Privacy</a>
+              <a href="/terms/" className="hover:underline">Terms</a>
+              <a href="/about/" className="hover:underline">About</a>
+              <a href="/contact/" className="hover:underline">Contact</a>
             </div>
           </div>
         </footer>
