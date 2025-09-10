@@ -12,6 +12,9 @@ export const metadata = {
       { url: "/favicon.svg", type: "image/svg+xml" },
     ],
     apple: "/apple-touch-icon.png",
+    other: {
+      "google-adsense-account": "ca-pub-6697797530499072", 
+    },  
   },
   openGraph: {
     title: "Tuner + Metronome App",
