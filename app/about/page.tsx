@@ -7,7 +7,7 @@ export default function About() {
         <h1 className="text-4xl font-extrabold mb-4">About</h1>
 
         <p className="text-lg mb-4">
-          I'm <strong>Jotham Saiborne</strong> — a masters computer science student, web developer, and hobbyist musician.
+          I am <strong>Jotham Saiborne</strong> — a masters computer science student, web developer, and hobbyist musician.
         </p>
 
         <section className="space-y-3 mb-4">
