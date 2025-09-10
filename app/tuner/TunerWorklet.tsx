@@ -734,7 +734,7 @@ export default function TunerWorklet() {
     if (audioCtxRef.current) { try { await close(); } catch {} audioCtxRef.current = null; }
     if (blobUrlRef.current) { try { URL.revokeObjectURL(blobUrlRef.current); } catch {} blobUrlRef.current = null; }
     if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  
   }, [close]);
 
   useEffect(() => { return () => { stop().catch(() => {}); if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; } }; // eslint-disable-next-line react-hooks/exhaustive-deps
