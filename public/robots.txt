@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+
+# Optional: block API and admin routes from crawlers
+# Disallow: /api/
+# Disallow: /admin/
+
+
+Sitemap: https://yourdomain.com/sitemap.xml

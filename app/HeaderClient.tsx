@@ -28,14 +28,14 @@ export default function HeaderClient() {
             <Link href="/" className="flex items-center gap-3">
               <Image
                 src="/logo.svg"
-                alt="Tuner & Metronome logo"
+                alt="Tuner + Metronome logo"
                 width={36}
                 height={36}
                 priority
                 className="block"
               />
               <div>
-                <div className="text-lg font-semibold leading-tight">Tuner & Metronome</div>
+                <div className="text-lg font-semibold leading-tight">Tuner + Metronome</div>
                 <div className="text-xs text-gray-500">Practice smarter</div>
               </div>
             </Link>

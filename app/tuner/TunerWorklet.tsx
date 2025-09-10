@@ -273,15 +273,11 @@ export default function TunerWorklet() {
   const rafRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number | null>(null);
 
-  // wheel physics
+  // smoothing for visual cents
   const smoothedCentsRef = useRef<number>(0);
-  const wheelAngleRef = useRef<number>(0);
-  const wheelVelRef = useRef<number>(0);
-  const wheelTargetRef = useRef<number>(0);
 
   // constants
   const MAX_CENTS_DISPLAY = 50;
-  const MAX_NEEDLE_ANGLE = 60;
   const CENTS_SMOOTH_ALPHA = 0.08;
   const TIGHT_CENTS = 3;
   const OK_CENTS = 15;
@@ -290,8 +286,6 @@ export default function TunerWorklet() {
   const NUMERIC_CENTS_ALPHA = 0.06;
   const DISPLAY_UPDATE_MS = 200;
   const PROB_THRESHOLD_DISPLAY = 0.03;
-
-  const noteAngles = useRef<number[]>(Array.from({ length: 12 }, (_, i) => (i / 12) * 360));
 
   // helper to refresh displayed note/cents when refA or smoothed freq changes
   const refreshDisplayedFromSmoothed = useCallback(() => {
@@ -334,14 +328,21 @@ export default function TunerWorklet() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // render loop
+  // tiny helper: convert hex -> rgb array
+  function hexToRgb(hex: string) {
+    const h = hex.replace('#', '');
+    const bigint = parseInt(h, 16);
+    return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255];
+  }
+
+  // render loop (simplified UI: big note + proximity ring)
   const render = useCallback((timeMs?: number) => {
     const canvas = canvasRef.current;
     if (!canvas) {
       rafRef.current = requestAnimationFrame(render);
       return;
     }
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext('2d');
     if (!ctx) {
       rafRef.current = requestAnimationFrame(render);
       return;
@@ -356,7 +357,7 @@ export default function TunerWorklet() {
     const DPR = Math.max(1, window.devicePixelRatio || 1);
     // responsive sizing: canvas fills available width up to max
     const cssW = Math.min(window.innerWidth * 0.86, 520);
-    const cssH = cssW; // keep square
+    const cssH = cssW * 0.6; // make it a rectangle (wider than tall) for clean label
     const w = cssW;
     const h = cssH;
     const width = Math.round(cssW * DPR);
@@ -371,274 +372,150 @@ export default function TunerWorklet() {
 
     const cx = w / 2;
     const cy = h / 2;
-    const outerR = Math.min(w, h) * 0.46;
-    const strobeOuter = outerR + 10;
-    const dialR = outerR * 0.82;
+    const outerR = Math.min(w, h) * 0.38;
 
     const rawCents = centsRef.current ?? 0;
     const displayFreq = smoothedFreqRef.current;
-    const displayCents = smoothedCentsNumRef.current ?? 0;
 
     smoothedCentsRef.current = smoothedCentsRef.current * (1 - CENTS_SMOOTH_ALPHA) + rawCents * CENTS_SMOOTH_ALPHA;
     const sCents = smoothedCentsRef.current;
+    const absCents = Math.abs(sCents);
 
-    // wheel target - use smoothed freq if present, else raw
-    {
-      const srcFreq = smoothedFreqRef.current ?? freqRef.current;
-      if (srcFreq != null) {
-        const midiF = midiFromFreq(srcFreq, refARef.current);
-        const frac = ((midiF % 12) + 12) % 12;
-        const noteAngle = (frac / 12) * 360;
-        const desired = (-noteAngle + 360) % 360;
-        const current = wheelAngleRef.current % 360;
-        let diff = ((desired - current + 540) % 360) - 180;
+    // proximity metric: 1 when perfectly in tune, 0 at or beyond OK_CENTS
+    const proximity = Math.max(0, 1 - Math.min(absCents, MAX_CENTS_DISPLAY) / OK_CENTS);
 
-        const HIGH_CONF = 0.7;
-        const MED_CONF = 0.45;
+    // color decisions
+    const green = '#16a34a';
+    const amber = '#d68b2e';
+    const red = '#c43f3f';
+    let ringColor = red;
+    if (absCents <= TIGHT_CENTS) ringColor = green;
+    else if (absCents <= OK_CENTS) ringColor = amber;
 
-        if (probRef.current >= HIGH_CONF) {
-          if (Math.abs(diff) < 8) {
-            wheelAngleRef.current = current + diff;
-            wheelVelRef.current = 0;
-            wheelTargetRef.current = wheelAngleRef.current;
-          } else {
-            const snapFactor = 0.9;
-            wheelTargetRef.current = current + diff * snapFactor;
-            wheelVelRef.current += diff * 6.0;
-          }
-        } else if (probRef.current >= MED_CONF) {
-          wheelTargetRef.current = current + diff * 0.85;
-        } else {
-          wheelTargetRef.current = current + diff * 0.45;
-        }
-      }
-    }
-
-    // wheel physics
-    const WHEEL_SPRING = 14.0;
-    const WHEEL_DAMP = 8.5;
-    const wheelAcc = WHEEL_SPRING * (wheelTargetRef.current - wheelAngleRef.current) - WHEEL_DAMP * wheelVelRef.current;
-    wheelVelRef.current += wheelAcc * dt;
-    const MAX_WHEEL_V = 720;
-    if (wheelVelRef.current > MAX_WHEEL_V) wheelVelRef.current = MAX_WHEEL_V;
-    if (wheelVelRef.current < -MAX_WHEEL_V) wheelVelRef.current = -MAX_WHEEL_V;
-    wheelAngleRef.current += wheelVelRef.current * dt;
-
-    // strobe visuals
-    const strobeSpeed = -sCents * 2.2;
-    const strobePhase = (now / 1000) * 12 + strobeSpeed * (now / 2000);
-
-    // drawing
+    // background
     ctx.clearRect(0, 0, w, h);
     const gBg = ctx.createLinearGradient(0, 0, w, h);
-    gBg.addColorStop(0, "#fbfbff");
-    gBg.addColorStop(1, "#f7f8fb");
+    gBg.addColorStop(0, '#fbfbff');
+    gBg.addColorStop(1, '#f7f8fb');
     ctx.fillStyle = gBg;
     ctx.fillRect(0, 0, w, h);
 
+    // soft card
     ctx.save();
     ctx.beginPath();
-    ctx.arc(cx, cy, outerR + 20, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(6,6,6,0.02)";
-    ctx.fill();
+    const cardW = Math.min(w * 0.96, 520);
+    const cardH = h * 0.96; // card height (use 96% of available height)
+    ctx.fillStyle = 'rgba(255,255,255,0.96)';
+    ctx.fillRect((w - cardW) / 2, (h - cardH) / 2, cardW, cardH);
     ctx.restore();
 
-    drawStrobeRing(ctx, cx, cy, strobeOuter, strobePhase, sCents);
-    drawNoteWheelRotated(ctx, cx, cy, outerR, wheelAngleRef.current, smoothedFreqRef.current, sCents);
+    // draw small horizontal scale + pointer (shows cents offset relative to target)
+    const scaleW = Math.min(w * 0.75, outerR * 2.4);
+    const scaleH = Math.max(8, outerR * 0.12);
+    const trackX1 = cx - scaleW / 2;
+    const trackX2 = cx + scaleW / 2;
+    const trackY = cy + outerR * 0.14;
+    const halfScale = scaleW / 2;
 
-    ctx.save();
+    // background track
     ctx.beginPath();
-    ctx.arc(cx, cy, dialR * 0.98, 0, Math.PI * 2);
-    const cardGrad = ctx.createLinearGradient(cx - dialR, cy - dialR, cx + dialR, cy + dialR);
-    cardGrad.addColorStop(0, "rgba(255,255,255,0.98)");
-    cardGrad.addColorStop(1, "rgba(250,250,252,0.94)");
-    ctx.fillStyle = cardGrad;
-    ctx.fill();
-    ctx.restore();
+    ctx.lineWidth = scaleH;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(15,23,42,0.06)';
+    ctx.moveTo(trackX1, trackY);
+    ctx.lineTo(trackX2, trackY);
+    ctx.stroke();
 
-    drawTicks(ctx, cx, cy, dialR, sCents);
+    // colored bands: OK band (amber) and tight band (green)
+    const okHalfPx = Math.min(OK_CENTS, MAX_CENTS_DISPLAY) / MAX_CENTS_DISPLAY * halfScale;
+    const tightHalfPx = Math.min(TIGHT_CENTS, MAX_CENTS_DISPLAY) / MAX_CENTS_DISPLAY * halfScale;
 
-    // needle
-    ctx.save();
-    ctx.translate(cx, cy);
+    ctx.fillStyle = 'rgba(214,139,46,0.06)'; // amber faint
+    ctx.fillRect(cx - okHalfPx, trackY - scaleH / 2, okHalfPx * 2, scaleH);
+    ctx.fillStyle = 'rgba(22,163,74,0.08)'; // green faint
+    ctx.fillRect(cx - tightHalfPx, trackY - scaleH / 2, tightHalfPx * 2, scaleH);
+
+    // tick marks and labels (with cents unit)
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(15,23,42,0.12)';
+    ctx.fillStyle = '#334155';
+    ctx.font = `${Math.max(10, Math.round(scaleH * 0.9))}px Inter, system-ui, -apple-system, sans-serif`;
+    const ticks = [-50, -25, 0, 25, 50];
+    for (let v of ticks) {
+      const x = cx + (v / MAX_CENTS_DISPLAY) * halfScale;
+      ctx.beginPath();
+      ctx.moveTo(x, trackY - scaleH / 2 - 6);
+      ctx.lineTo(x, trackY - scaleH / 2);
+      ctx.stroke();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(`${v}¢`, x, trackY + scaleH * 0.5 + 2);
+    }
+
+    // pointer position (clamped to scale)
+    const pointerX = cx + Math.max(-halfScale, Math.min(halfScale, (sCents / MAX_CENTS_DISPLAY) * halfScale));
+    const pH = Math.max(12, outerR * 0.14);
+    const pW = Math.max(12, pH * 0.9);
+    const pointerApexY = trackY + scaleH / 2 + 6; // apex just below the track (triangle points up)
+
+    // pointer color based on closeness
+    const pointerColor = absCents <= TIGHT_CENTS ? '#16a34a' : (absCents <= OK_CENTS ? '#d68b2e' : '#c43f3f');
+
+    // draw inverted pointer (triangle pointing up with apex near the track)
     ctx.beginPath();
-    ctx.arc(0, 0, dialR * 0.08, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(0,0,0,0.12)";
-    ctx.fill();
-    const needleAngleDeg = Math.max(-MAX_NEEDLE_ANGLE, Math.min(MAX_NEEDLE_ANGLE, (sCents / MAX_CENTS_DISPLAY) * MAX_NEEDLE_ANGLE));
-    ctx.rotate((needleAngleDeg * Math.PI) / 180);
-    const absCents = Math.abs(sCents);
-    const needleColor = absCents <= TIGHT_CENTS ? "#1e9b55" : (absCents <= OK_CENTS ? "#d68b2e" : "#c43f3f");
-    const grad = ctx.createLinearGradient(0, -dialR * 0.02, 0, -dialR * 0.72);
-    grad.addColorStop(0, "#fff");
-    grad.addColorStop(0.2, needleColor);
-    grad.addColorStop(1, "#6b0000");
-    ctx.beginPath();
-    ctx.moveTo(-7, dialR * 0.06);
-    ctx.lineTo(0, -dialR * 0.72);
-    ctx.lineTo(7, dialR * 0.06);
+    ctx.moveTo(pointerX, pointerApexY); // apex (top of triangle)
+    ctx.lineTo(pointerX - pW / 2, pointerApexY + pH); // bottom-left
+    ctx.lineTo(pointerX + pW / 2, pointerApexY + pH); // bottom-right
     ctx.closePath();
-    ctx.fillStyle = grad;
+    ctx.fillStyle = pointerColor;
     ctx.fill();
-    ctx.beginPath();
-    ctx.arc(0, 0, dialR * 0.06, 0, Math.PI * 2);
-    ctx.fillStyle = "#111";
-    ctx.fill();
-    ctx.restore();
+    ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
 
-    // center text (use smoothed/throttled values)
+    // small center marker (vertical through the track)
+    ctx.beginPath();
+    ctx.moveTo(cx, trackY - scaleH / 2 - 4);
+    ctx.lineTo(cx, trackY + scaleH / 2 + 4);
+    ctx.strokeStyle = 'rgba(15,23,42,0.12)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // optional directional hints
+    ctx.font = `${Math.max(10, Math.round(scaleH * 0.75))}px Inter, system-ui, -apple-system, sans-serif`;
+    ctx.fillStyle = '#64748b';
+    ctx.textAlign = 'left';
+    ctx.fillText('Tune up ↑', trackX2 + 8, trackY - scaleH * 0.6 - 6);
+    ctx.textAlign = 'right';
+    ctx.fillText('↓ Tune down', trackX1 - 8, trackY - scaleH * 0.6 - 6);
+
+    // end scale/pointer drawing
+
+    // center: big note
     ctx.save();
-    ctx.textAlign = "center";
-    ctx.fillStyle = "#111";
-    ctx.font = "22px Inter, system-ui, -apple-system, sans-serif";
-    ctx.fillText(noteRef.current ?? "-", cx, cy + dialR * 0.40);
-    ctx.font = "14px monospace";
-    ctx.fillStyle = "#333";
-    ctx.fillText(displayFreq ? `${displayFreq.toFixed(2)} Hz` : "—", cx, cy + dialR * 0.56);
-    ctx.fillStyle = absCents <= TIGHT_CENTS ? "#1e9b55" : (absCents <= OK_CENTS ? "#d68b2e" : "#c43f3f");
-    ctx.fillText(displayCents !== null ? (displayCents > 0 ? `+${displayCents!.toFixed(2)}¢` : `${displayCents!.toFixed(2)}¢`) : "—", cx, cy + dialR * 0.70);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const noteFontSize = Math.max(36, Math.round(outerR * 0.5));
+    ctx.font = `${noteFontSize}px Inter, system-ui, -apple-system, sans-serif`;
+    ctx.fillStyle = '#0f172a';
+    // place note slightly above the track/pointer
+    const noteY = trackY - scaleH / 2 - Math.max(8, noteFontSize * 0.6);
+    ctx.fillText(noteRef.current ?? '-', cx, noteY);
+
+    // frequency and cents text (placed below the track)
+    ctx.font = `14px monospace`;
+    ctx.fillStyle = '#334155';
+    ctx.fillText(displayFreq ? `${displayFreq.toFixed(2)} Hz` : '—', cx, trackY + outerR * 0.6);
+
+    const centsText = cents !== null ? (cents > 0 ? `+${cents.toFixed(2)}¢` : `${cents.toFixed(2)}¢`) : '—';
+    const centsColor = absCents <= TIGHT_CENTS ? green : (absCents <= OK_CENTS ? amber : red);
+    ctx.fillStyle = centsColor;
+    ctx.fillText(centsText, cx, trackY + outerR * 0.78);
     ctx.restore();
 
     rafRef.current = requestAnimationFrame(render);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // drawing helpers (unchanged)
-  function drawStrobeRing(ctx: CanvasRenderingContext2D, cx: number, cy: number, outerR: number, phase: number, sCents: number) {
-    const innerR = outerR - 36;
-    const stripes = 64;
-    const absC = Math.min(1, Math.abs(sCents) / MAX_CENTS_DISPLAY);
-    const baseAlpha = 0.16 + (1 - absC) * 0.18;
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate((phase * Math.PI) / 180);
-    for (let i = 0; i < stripes; i++) {
-      const t = i / stripes;
-      const a1 = t * Math.PI * 2;
-      const a2 = a1 + (Math.PI * 2) / stripes * 0.9;
-      const bright = (Math.cos(t * Math.PI * 4 - (sCents / MAX_CENTS_DISPLAY) * Math.PI) * 0.5 + 0.5) * (1 - absC);
-      const c = Math.floor(200 + 20 * bright);
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(a1) * innerR, Math.sin(a1) * innerR);
-      ctx.arc(0, 0, innerR, a1, a2, false);
-      ctx.lineTo(Math.cos(a2) * outerR, Math.sin(a2) * outerR);
-      ctx.arc(0, 0, outerR, a2, a1, true);
-      ctx.closePath();
-      ctx.fillStyle = `rgba(${c},${c},${c},${baseAlpha})`;
-      ctx.fill();
-    }
-    ctx.beginPath();
-    ctx.arc(0, 0, outerR + 2, 0, Math.PI * 2);
-    ctx.strokeStyle = "rgba(0,0,0,0.05)";
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  function drawNoteTrackSolid(ctx: CanvasRenderingContext2D, cx: number, cy: number, outerRadius: number, trackWidth: number, fillColor: string) {
-    const innerR = Math.max(0, outerRadius - trackWidth);
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.beginPath();
-    ctx.arc(0, 0, outerRadius, 0, Math.PI * 2, false);
-    ctx.arc(0, 0, innerR, 0, Math.PI * 2, true);
-    ctx.closePath();
-    ctx.fillStyle = fillColor;
-    ctx.fill();
-    ctx.restore();
-  }
-
-  function drawNoteWheelRotated(ctx: CanvasRenderingContext2D, cx: number, cy: number, outerRadius: number, wheelRotationDeg: number, currFreq: number | null, sCents: number) {
-    ctx.save();
-    ctx.translate(cx, cy);
-
-    const TRACK_WIDTH = Math.max(36, Math.round(outerRadius * 0.11));
-    const TRACK_COLOR = "#fbfdff";
-    drawNoteTrackSolid(ctx, 0, 0, outerRadius, TRACK_WIDTH, TRACK_COLOR);
-
-    const labels = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-    const fontSize = Math.max(12, Math.round(outerRadius * 0.075));
-    ctx.font = `${fontSize}px Inter, system-ui, -apple-system, sans-serif`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-
-    let activeIndex: number | null = null;
-    if (currFreq !== null) {
-      const midiRounded = Math.round(midiFromFreq(currFreq, refARef.current));
-      activeIndex = ((midiRounded % 12) + 12) % 12;
-    }
-
-    const labelRadius = outerRadius - TRACK_WIDTH * 0.5;
-    for (let i = 0; i < 12; i++) {
-      const baseAngleDeg = noteAngles.current[i];
-      const absAngleDeg = (baseAngleDeg + wheelRotationDeg) % 360;
-      const angRad = ((absAngleDeg - 90) * Math.PI) / 180;
-      const x = Math.cos(angRad) * labelRadius;
-      const y = Math.sin(angRad) * labelRadius;
-
-      const isActive = activeIndex === i;
-      const alpha = isActive ? 1 : 0.92;
-      const textColor = isActive ? "#0f172a" : "#0b1220";
-
-      ctx.beginPath();
-      ctx.arc(x, y, isActive ? 18 : 16, 0, Math.PI * 2);
-      ctx.fillStyle = isActive ? "rgba(79,70,229,0.10)" : "rgba(2,6,23,0.03)";
-      ctx.fill();
-
-      ctx.save();
-      ctx.translate(x, y);
-      const norm = ((absAngleDeg % 360) + 360) % 360;
-      if (norm > 90 && norm < 270) ctx.rotate(Math.PI);
-      ctx.fillStyle = textColor;
-      ctx.globalAlpha = alpha;
-      ctx.fillText(labels[i], 0, 0);
-      ctx.globalAlpha = 1;
-      ctx.restore();
-    }
-    ctx.restore();
-  }
-
-  function drawTicks(ctx: CanvasRenderingContext2D, cx: number, cy: number, radius: number, sCents: number) {
-    ctx.save();
-    ctx.translate(cx, cy);
-    const majors = [-50, -25, 0, 25, 50];
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = "#444";
-    ctx.fillStyle = "#222";
-    ctx.font = "12px Inter, system-ui, -apple-system, sans-serif";
-    for (let v of majors) {
-      const ang = ((v / MAX_CENTS_DISPLAY) * MAX_NEEDLE_ANGLE) * (Math.PI / 180);
-      const x1 = Math.sin(ang) * (radius * 0.86);
-      const y1 = -Math.cos(ang) * (radius * 0.86);
-      const x2 = Math.sin(ang) * (radius * 0.70);
-      const y2 = -Math.cos(ang) * (radius * 0.70);
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.stroke();
-      ctx.textAlign = v === 0 ? "center" : (v < 0 ? "right" : "left");
-      const labelX = Math.sin(ang) * (radius * 0.60);
-      const labelY = -Math.cos(ang) * (radius * 0.60) + 6;
-      ctx.fillText(`${v}`, labelX, labelY);
-    }
-
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = "rgba(20,20,20,0.10)";
-    const micro = 20;
-    for (let i = 0; i <= micro; i++) {
-      const v = (i / micro) * 2 * MAX_CENTS_DISPLAY - MAX_CENTS_DISPLAY;
-      const ang = ((v / MAX_CENTS_DISPLAY) * MAX_NEEDLE_ANGLE) * (Math.PI / 180);
-      const x1 = Math.sin(ang) * (radius * 0.86);
-      const y1 = -Math.cos(ang) * (radius * 0.86);
-      const x2 = Math.sin(ang) * (radius * 0.80);
-      const y2 = -Math.cos(ang) * (radius * 0.80);
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
 
   // AudioWorklet + verifier + smoothing + throttled UI updates
   const start = useCallback(async () => {
@@ -844,7 +721,7 @@ export default function TunerWorklet() {
     setRunning(true);
 
     if (!rafRef.current) rafRef.current = requestAnimationFrame(render);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [createAudioContextOnGesture, running]);
 
   const stop = useCallback(async () => {
@@ -857,7 +734,7 @@ export default function TunerWorklet() {
     if (audioCtxRef.current) { try { await close(); } catch {} audioCtxRef.current = null; }
     if (blobUrlRef.current) { try { URL.revokeObjectURL(blobUrlRef.current); } catch {} blobUrlRef.current = null; }
     if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [close]);
 
   useEffect(() => { return () => { stop().catch(() => {}); if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; } }; // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -877,11 +754,11 @@ export default function TunerWorklet() {
       <div className="max-w-6xl w-full bg-white/60 rounded-2xl shadow-lg p-6 backdrop-blur-sm border border-slate-100">
         <div className="flex flex-col md:flex-row gap-6 items-start">
           <div className="flex-shrink-0 w-full md:w-auto flex justify-center">
-            <div className="rounded-xl shadow-2xl bg-white border border-slate-100 p-4">
-              {/* responsive canvas: fills up to 86% of viewport width on small screens, caps at 520px */}
+            <div className="rounded-xl shadow-2xl bg-white border border-slate-100 p-4 w-full max-w-[560px]">
+              {/* simplified canvas UI: large note + colored proximity ring */}
               <canvas
                 ref={canvasRef}
-                className="block rounded-lg"
+                className="block rounded-lg w-full"
                 aria-label="tuner canvas"
               />
             </div>
@@ -901,7 +778,7 @@ export default function TunerWorklet() {
                   <button onClick={stop} aria-label="Stop tuner" className="px-4 py-3 rounded-lg bg-gradient-to-r from-rose-500 to-rose-400 text-white font-semibold shadow hover:scale-[1.02] transition-transform">Stop</button>
                 )}
 
-                <button onClick={() => resume().catch(() => {})} aria-label="Resume audio context" className="px-4 py-3 rounded-lg bg-emerald-500 text-white font-semibold shadow hover:brightness-105 transition">Resume</button>
+                
               </div>
             </div>
 
@@ -929,7 +806,7 @@ export default function TunerWorklet() {
             </div>
 
             <div className="p-4 rounded-lg bg-white/60 border border-slate-100">
-              <div className="text-sm text-slate-700 hidden">Tip: play a single sustained note. The wheel rotates so the detected note sits under the fixed needle at the top — use the strobe + needle to lock pitch.</div>
+              <div className="text-sm text-slate-700">Tip: play a single sustained note. The big note text and colored ring show the nearest note and how close you are — green when in tune.</div>
             </div>
 
             <div className="text-xs text-slate-500 hidden">Built with WebAudio YIN in an AudioWorklet — conservative octave correction + main-thread verifier.</div>

@@ -4,8 +4,36 @@ import React from "react";
 import HeaderClient from "./HeaderClient";
 
 export const metadata = {
-  title: "Tuner — Metronome",
-  description: "Tuner and metronome web app for practice",
+  title: "Tuner + Metronome App",
+  description: "Free online tuner and metronome for musicians — fast, simple, and built for practice.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", type: "image/x-icon" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
+  openGraph: {
+    title: "Tuner + Metronome App",
+    description: "Free online tuner and metronome for musicians — fast, simple, and built for practice.",
+    url: "https://tunermetronome.com",                 // <- change to your site URL
+    siteName: "Tuner + Metronome",
+    images: [
+      {
+        url: "https://tunermetronome.com/preview.png", // <- absolute URL to preview.png in production
+        width: 1200,
+        height: 630,
+      },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Tuner + Metronome App",
+    description: "Free online tuner and metronome for musicians — fast, simple, and built for practice.",
+    images: ["https://tunermetronome.com/preview.png"], // <- change this
+    creator: "@jsaiborne",                         // <- optional
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -28,6 +56,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="flex items-center gap-4">
               <a href="/privacy" className="hover:underline">Privacy</a>
               <a href="/terms" className="hover:underline">Terms</a>
+              <a href="/about" className="hover:underline">About</a>
+              <a href="/contact" className="hover:underline">Contact</a>
             </div>
           </div>
         </footer>
