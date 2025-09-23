@@ -1,22 +1,13 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useAudioContext } from "../context/AudioContextProvider";
 import { Inter } from "next/font/google";
 
 const inter = Inter({ subsets: ["latin"], weight: ["400", "600", "700"], display: "swap" });
 
-type WorkletMsg = {
-  type: "pitch";
-  frequency: number | null;
-  probability: number;
-  rms: number;
-  timestamp: number;
-  rawTau?: number;
-  cmnd?: number;
-};
-
-/* AudioWorklet JS (YIN) - unchanged */
+/* (Worklet JS unchanged) */
 const WORKLET_JS = `
 // YIN AudioWorkletProcessor with octave-correction heuristic
 // Runs in AudioWorkletGlobalScope (audio thread)
@@ -251,7 +242,6 @@ export default function TunerWorklet() {
 
   // analyser
   const analyserRef = useRef<AnalyserNode | null>(null);
-  // use the plain Float32Array type (no generic) to avoid platform-generic mismatch
   const freqDataRef = useRef<Float32Array | null>(null);
 
   // raw/live refs
@@ -319,10 +309,8 @@ export default function TunerWorklet() {
       lastTimeRef.current = null;
       if (!rafRef.current) rafRef.current = requestAnimationFrame(render);
     });
-    // observe the canvas wrapper (parent) so layout-driven size changes are caught
     const parent = canvas.parentElement || canvas;
     ro.observe(parent);
-    // also observe document body to catch orientation changes in some browsers
     ro.observe(document.body);
     return () => ro.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -566,7 +554,7 @@ export default function TunerWorklet() {
 
     // Use explicit typed message event and robust null checks
     node.port.onmessage = (ev: MessageEvent) => {
-      const msg = ev.data as WorkletMsg;
+      const msg = ev.data as any;
       if (!msg || msg.type !== "pitch") return;
 
       const reportedFreq = msg.frequency;
@@ -662,7 +650,6 @@ export default function TunerWorklet() {
             setCents(null);
             setNoteLabel("-");
             noteRef.current = "-";
-
           }
         }
 
@@ -749,9 +736,23 @@ export default function TunerWorklet() {
     refreshDisplayedFromSmoothed();
   };
 
+  // Structured data for SEO (application/ld+json)
+  const ld = {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Tuner + Metronome — Online Tuner",
+    "url": typeof window !== 'undefined' ? window.location.href : "https://example.com/tuner",
+    "description": "A lightweight web-based tuner using AudioWorklet and a YIN-inspired pitch detector to help musicians tune instruments accurately in the browser.",
+    "applicationCategory": "Music",
+    "operatingSystem": "Web",
+  } as any;
+
   return (
-    <div className={`${inter.className} min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-50 to-white p-6`}>
-      <div className="max-w-6xl w-full bg-white/60 rounded-2xl shadow-lg p-6 backdrop-blur-sm border border-slate-100">
+    <div className={`${inter.className} min-h-screen flex flex-col items-center justify-start bg-gradient-to-b from-slate-50 to-white p-6`}>
+      {/* JSON-LD for search engines */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />
+
+      <div className="w-full max-w-6xl bg-white/60 rounded-2xl shadow-lg p-6 backdrop-blur-sm border border-slate-100">
         <div className="flex flex-col md:flex-row gap-6 items-start">
           <div className="flex-shrink-0 w-full md:w-auto flex justify-center">
             <div className="rounded-xl shadow-2xl bg-white border border-slate-100 p-4 w-full max-w-[560px]">
@@ -778,7 +779,6 @@ export default function TunerWorklet() {
                   <button onClick={stop} aria-label="Stop tuner" className="px-4 py-3 rounded-lg bg-gradient-to-r from-rose-500 to-rose-400 text-white font-semibold shadow hover:scale-[1.02] transition-transform">Stop</button>
                 )}
 
-                
               </div>
             </div>
 
@@ -813,6 +813,41 @@ export default function TunerWorklet() {
           </div>
         </div>
       </div>
+
+      {/* Rich textual content for AdSense / SEO — clear, original, and helpful */}
+      <article className="prose max-w-4xl mt-8 p-4 bg-white/60 rounded-lg border border-slate-100">
+        <h2 className="mt-6 font-semibold text-lg leading-tight tracking-tight text-slate-900">About this online tuner</h2>
+        <p className="mt-3">
+          This web-based tuner is designed to give musicians a fast, accurate way to tune instruments directly in the browser. It uses a
+          YIN-inspired pitch detection algorithm running inside an AudioWorklet for low-latency and precise frequency estimation. Because the
+          audio processing runs locally in your device, no microphone audio leaves your browser unless you explicitly use a sharing feature.
+        </p>
+
+        <h3 className="mt-6 font-semibold text-lg leading-tight tracking-tight text-slate-900">How the tuner works</h3>
+        <p className="mt-3">
+          When you press <strong>Start</strong>, the app asks for microphone permission and begins analysing the incoming sound in short frames.
+          The worklet looks for repeating patterns (periodicity) to estimate the fundamental frequency of the note you play. That frequency is
+          then smoothed and compared to the nearest musical note — the difference is shown in cents (hundredths of a semitone) so you can fine-tune
+          your instrument.
+        </p>
+
+        <h3 className="mt-6 font-semibold text-lg leading-tight tracking-tight text-slate-900">How to use</h3>
+        <ol>
+          <li>Find a quiet spot and press <strong>Start</strong> to give the page access to your microphone.</li>
+          <li>Play a single sustained note (pluck one string or bow a single note) and watch the large note readout and the cents indicator.</li>
+          <li>Tighten or loosen the tuning peg until the cents value reads close to <strong>0¢</strong> and the indicator turns green.</li>
+        </ol>
+
+        <h3 className="mt-6 font-semibold text-lg leading-tight tracking-tight text-slate-900">Practice tips</h3>
+        <p className="mt-3">
+          Use the tuner together with the metronome to develop consistent timing and intonation. Tune before every practice session, and when
+          using fresh strings allow them to stretch and re-tune after a few minutes of playing. If the app has trouble hearing your instrument,
+          try moving closer to your device microphone or use headphones with a built-in mic for better signal-to-noise.
+        </p>
+
+       
+      </article>
+
     </div>
   );
 }
