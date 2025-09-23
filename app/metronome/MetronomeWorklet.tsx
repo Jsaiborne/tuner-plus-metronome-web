@@ -1,7 +1,7 @@
-// components/MetronomeWorklet.tsx
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { createWorker } from "./MetronomeWorker";
 import { useAudioContext } from "../context/AudioContextProvider";
 import { Poppins, Inter } from "next/font/google";
@@ -391,6 +391,43 @@ const MetronomeWorklet: React.FC = () => {
         <div>Time signature: <strong style={{ fontFamily: 'var(--font-poppins)' }}>{beatsPerMeasure}/{beatUnit}</strong></div>
         <div>Current 16th: <strong style={{ fontFamily: 'var(--font-poppins)' }}>{current16thNoteState}</strong></div>
       </div>
+
+      {/* Rich textual content for AdSense / SEO — clear, original, and helpful */}
+      <article className="prose max-w-4xl mt-6 p-4 bg-white/60 rounded-lg border border-slate-100 space-y-6">
+        <h2>About this web metronome</h2>
+
+        <p>
+          This web-based metronome provides a low-latency, rhythmic click track implemented with the Web Audio API. It schedules
+          precise clicks ahead of time using an internal worker for timing and an AudioContext for sample-accurate playback.
+          The metronome supports configurable tempo, subdivisions, and time signatures so you can practice everything from simple
+          quarter-note grooves to complex polyrhythms.
+        </p>
+
+        <h3 className="mt-6 font-semibold text-lg leading-tight tracking-tight text-slate-900">How it works (plain language)</h3>
+        <p>
+          A small background worker sends regular callback messages (the lookahead). The scheduler uses those ticks to plan
+          future note events slightly ahead of the current audio time so the clicks play with consistent timing even if the
+          main thread is temporarily busy. Notes are generated with short oscillators and gain envelopes to create clean clicks
+          with accents for the downbeat and measure starts.
+        </p>
+
+        <h3 className="mt-6 font-semibold text-lg leading-tight tracking-tight text-slate-900">How to use</h3>
+        <ol>
+          <li>Press the central Play button to start. Your browser may request audio permission; the metronome runs locally in the browser.</li>
+          <li>Adjust tempo with the slider, arrows, or by entering a BPM value directly.</li>
+          <li>Choose subdivisions (16th, 8th, quarter, triplet) and set the time signature to match the piece you're practicing.</li>
+          <li>Use the Tap button to set tempo by rhythmically tapping a beat.</li>
+        </ol>
+
+        <h3 className="mt-6 font-semibold text-lg leading-tight tracking-tight text-slate-900">Practice tips</h3>
+        <p>
+          Start slow and maintain consistent quarter-note placement — speed only after five clean repetitions.
+          Practice with subdivisions to internalize the smallest rhythmic unit, and alternate between playing on the click and
+          leaving space (playing in silence while feeling the click) to improve internal timekeeping.
+        </p>
+
+        
+      </article>
     </div>
   );
 };
