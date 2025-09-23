@@ -1,4 +1,6 @@
 "use client";
+/* eslint-disable react/no-unescaped-entities */
+
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
