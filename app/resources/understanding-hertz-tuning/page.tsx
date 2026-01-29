@@ -1,5 +1,4 @@
 "use client";
-/* eslint-disable react/no-unescaped-entities */
 
 import React from "react";
 import Link from "next/link";
@@ -29,7 +28,7 @@ export default function HertzTuningGuide() {
         {/* Header */}
         <header className="mb-10 text-center">
           <div className="text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider text-sm mb-3">
-            Music Theory & Physics
+            Music Theory & Practice
           </div>
           <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-gray-100 mb-6 leading-tight">
             A440 vs. A432: Understanding Hertz in Music
@@ -44,7 +43,7 @@ export default function HertzTuningGuide() {
         </header>
 
         <p className="lead text-xl text-gray-600 dark:text-gray-300 mb-8">
-          When you use a <Link href="/" className="text-blue-600 underline">digital tuner</Link>, you'll see a number like "440Hz" displayed. But what does that actually mean for your instrument, and why do some musicians insist on changing it?
+          When you use a <Link href="/" className="text-blue-600 underline">digital tuner</Link>, you&apos;ll see a number like "440Hz" displayed. But what does that actually mean for your instrument, and why do some musicians insist on changing it?
         </p>
 
         <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-12 mb-4">
@@ -54,13 +53,11 @@ export default function HertzTuningGuide() {
           In physics, <strong>Hertz (Hz)</strong> is a unit of frequency defined as one cycle per second. When a guitar string vibrates back and forth 440 times in one second, it pushes the air at that same rate, creating a sound wave that our brain interprets as the musical note <strong>A4</strong> (the A above middle C).
         </p>
 
-        
-
         <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-12 mb-4">
           The Standard: A440
         </h2>
         <p>
-          Before the 20th century, tuning was chaotic. An "A" in London might be different from an "A" in Paris. This made it nearly impossible for traveling musicians to play together or for instrument manufacturers to standardize their products.
+          Before the 20th century, tuning was chaotic. An &quot;A&quot; in London might be different from an &quot;A&quot; in Paris. This made it nearly impossible for traveling musicians to play together or for instrument manufacturers to standardize their products.
         </p>
         <p>
           In 1936, the International Organization for Standardization (ISO) adopted <strong>A = 440Hz</strong> as the universal pitch standard. Today, almost every piano, digital keyboard, and symphony orchestra uses this reference point.
@@ -70,7 +67,7 @@ export default function HertzTuningGuide() {
           The Alternative: A432
         </h2>
         <p>
-          Despite the 440Hz standard, a growing community of musicians prefers tuning to <strong>432Hz</strong>. Proponents of 432Hz—often called "Verdi’s Tuning"—claim that it sounds "warmer" or more "natural."
+          Despite the 440Hz standard, a growing community of musicians prefers tuning to <strong>432Hz</strong>. Proponents of 432Hz—often called &quot;Verdi&apos;s Tuning&quot;—claim that it sounds &quot;warmer&quot; or more &quot;natural.&quot;
         </p>
         <p>
           While many of the spiritual claims regarding 432Hz are debated, from a purely physical standpoint, tuning lower reduces the tension on the strings of an instrument. This can lead to a slightly mellower tone, which many players find relaxing during solo practice.
@@ -124,7 +121,7 @@ export default function HertzTuningGuide() {
         <div className="bg-gray-100 dark:bg-gray-800 p-8 rounded-2xl mt-12 text-center">
           <h3 className="text-2xl font-bold mb-4">Ready to find your pitch?</h3>
           <p className="mb-6">
-            Whether you're tuning to 440Hz for a gig or 432Hz for a session, our tool provides the real-time accuracy you need.
+            Whether you&apos;re tuning to 440Hz for a gig or 432Hz for a session, our tool provides the real-time accuracy you need.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Link href="/" className="px-8 py-3 bg-blue-600 text-white rounded-full font-bold hover:bg-blue-700 transition-all">

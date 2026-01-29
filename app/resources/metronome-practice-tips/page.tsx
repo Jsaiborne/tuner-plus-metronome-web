@@ -1,6 +1,4 @@
 "use client";
-/* eslint-disable react/no-unescaped-entities */
-
 import React from "react";
 import Link from "next/link";
 
@@ -47,7 +45,7 @@ export default function MetronomePracticeTips() {
 
         {/* Introduction */}
         <p className="lead text-xl text-gray-600 dark:text-gray-300 mb-8">
-          Many musicians treat a metronome like a seatbelt: they only use it because they have to, and they take it off as soon as possible. But a metronome isn't just for keeping you from speeding up—it is a tool for calibrating your brain's perception of time.
+          Many musicians treat a metronome like a seatbelt: they only use it because they have to, and they take it off as soon as possible. But a metronome isn&apos;t just for keeping you from speeding up—it is a tool for calibrating your brain&apos;s perception of time.
         </p>
 
         <p>
@@ -61,10 +59,10 @@ export default function MetronomePracticeTips() {
           1. Burying the Click
         </h2>
         <p>
-          This is the gold standard for rhythmic precision. The goal isn't to hear the click; the goal is to make it disappear.
+          This is the gold standard for rhythmic precision. The goal isn&apos;t to hear the click; the goal is to make it disappear.
         </p>
         <p>
-          When your note's attack happens at the exact same millisecond as the metronome's click, the sound of your instrument "masks" the click. If you can still hear the metronome clearly, you are either slightly early or slightly late.
+          When your note&apos;s attack happens at the exact same millisecond as the metronome&apos;s click, the sound of your instrument "masks" the click. If you can still hear the metronome clearly, you are either slightly early or slightly late.
         </p>
         <ul className="list-disc pl-6 space-y-2 mb-6">
           <li><strong>Set BPM:</strong> 60-80 BPM.</li>
@@ -113,7 +111,7 @@ export default function MetronomePracticeTips() {
           Jazz and funk players often feel the "2" and "4" rather than the "1" and "3."
         </p>
         <p>
-          Set your metronome to a comfortable tempo, but pretend the click is <strong>only the backbeat</strong> (beats 2 and 4). This completely changes the feel of the rhythm and forces you to generate the downbeat (beat 1) yourself. It’s excellent training for playing with a drummer.
+          Set your metronome to a comfortable tempo, but pretend the click is <strong>only the backbeat</strong> (beats 2 and 4). This completely changes the feel of the rhythm and forces you to generate the downbeat (beat 1) yourself. It&apos;s excellent training for playing with a drummer.
         </p>
 
         {/* Conclusion / CTA */}

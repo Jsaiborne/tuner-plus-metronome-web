@@ -1,6 +1,4 @@
 "use client";
-/* eslint-disable react/no-unescaped-entities */
-
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -69,7 +67,7 @@ export default function HowWebAudioWorks() {
         </p>
 
         <div className="bg-gray-100 dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-800 text-sm font-mono overflow-x-auto my-6">
-          <p className="text-gray-500 mb-2">// Simplified Audio Setup</p>
+          <p className="text-gray-500 mb-2">{'// Simplified Audio Setup'}</p>
           <p>const audioCtx = new window.AudioContext();</p>
           <p>const analyser = audioCtx.createAnalyser();</p>
           <p>const source = audioCtx.createMediaStreamSource(stream);</p>
@@ -85,10 +83,10 @@ export default function HowWebAudioWorks() {
         </p>
         
 
-[Image of time domain vs frequency domain signal graph]
+{/* Image: time domain vs frequency domain signal graph */}
 
         <p>
-          While FFT is great for visualizers, it has a "resolution" problem for tuners. The gaps between "bins" in an FFT can be too wide to distinguish between a slightly sharp or flat note, especially at low frequencies (like a bass guitar's low E). For a professional tuner, we need more precision.
+          While FFT is great for visualizers, it has a "resolution" problem for tuners. The gaps between "bins" in an FFT can be too wide to distinguish between a slightly sharp or flat note, especially at low frequencies (like a bass guitar&apos;s low E). For a professional tuner, we need more precision.
         </p>
 
        {/* Section 3: Autocorrelation */}
