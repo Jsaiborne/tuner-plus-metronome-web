@@ -61,6 +61,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <a href="/terms/" className="hover:underline">Terms</a>
               <a href="/about/" className="hover:underline">About</a>
               <a href="/contact/" className="hover:underline">Contact</a>
+               <a href="/resources/" className="hover:underline">Resources</a>
             </div>
           </div>
         </footer>

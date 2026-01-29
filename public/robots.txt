@@ -1,10 +1,8 @@
 User-agent: *
 Allow: /
 
-
-# Optional: block API and admin routes from crawlers
+# Block sensitive routes if you decide to add them later
 # Disallow: /api/
 # Disallow: /admin/
 
-
-Sitemap: https://yourdomain.com/sitemap.xml
+Sitemap: https://tunermetronome.com/sitemap.xml

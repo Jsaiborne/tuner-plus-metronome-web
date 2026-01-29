@@ -45,6 +45,7 @@ export default function HeaderClient() {
           <nav className="hidden md:flex items-center gap-4">
             <Link href="/" className={linkClass("/")}>Tuner</Link>
             <Link href="/metronome/" className={linkClass("/metronome")}>Metronome</Link>
+            <Link href="/resources/" className={linkClass("/resources")}>Resources</Link>
           </nav>
 
           {/* Mobile menu button */}
@@ -65,6 +66,7 @@ export default function HeaderClient() {
               <nav className="flex flex-col gap-3">
                 <Link href="/" className={linkClass("/")}>Tuner</Link>
                 <Link href="/metronome" className={linkClass("/metronome")}>Metronome</Link>
+                 <Link href="/resources" className={linkClass("/resources")}>Resources</Link>
               </nav>
             </div>
           </div>
