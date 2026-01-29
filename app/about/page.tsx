@@ -19,14 +19,14 @@ export default function About() {
           <div>
             <h2 className="text-2xl font-bold mb-2">Our Mission</h2>
             <p>
-              This project started as a side experiment but grew into a focused application for musicians of all levels. Whether you are a student practicing scales or a professional fine-tuning your instrument before a session, the goal is to provide a seamless, high-performance interface.
+              This project started as a fun side experiment but grew into a focused application for musicians of all levels. Whether you are a student practicing scales or a professional fine-tuning your instrument before a session, the goal is to provide a seamless, high-performance interface.
             </p>
           </div>
 
           <div>
             <h2 className="text-2xl font-bold mb-2">Support & Development</h2>
             <p>
-              To maintain the server infrastructure required for real-time audio analysis and to support my ongoing graduate research in computer science, this site utilizes a non-intrusive support model. This approach ensures that the essential tuner and metronome functionalities remain free of charge, providing a professional environment that respects the musician's focus and attention. I am committed to keeping these tools accessible to help fellow musicians improve their craft.
+              To maintain the server infrastructure required for real-time audio analysis and to support my ongoing graduate research in computer science, this site utilizes a non-intrusive support model. This approach ensures that the essential tuner and metronome functionalities remain free of charge, providing a professional environment that respects the musician&aposs focus and attention. I am committed to keeping these tools accessible to help fellow musicians improve their craft.
             </p>
           </div>
         </section>
