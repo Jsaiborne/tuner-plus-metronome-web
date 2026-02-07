@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
 import React from "react";
 import Link from "next/link";
@@ -42,7 +43,7 @@ export default function LocalProcessingArticle() {
         {/* Header */}
         <header className="mb-10 text-center">
           <div className="text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider text-sm mb-3">
-            Privacy & Performance
+            Privacy &amp; Performance
           </div>
           <h1 className="text-4xl md:text-5xl font-extrabold mb-6 leading-tight">
             Privacy by Design: Why We Process Audio Locally
@@ -58,14 +59,14 @@ export default function LocalProcessingArticle() {
 
         {/* Intro */}
         <p className="lead text-xl text-gray-600 dark:text-gray-300 mb-6">
-          In an era where "the cloud" is the default destination for unknown data, many users are rightly cautious about granting microphone access.
+          In an era where &quot;the cloud&quot; is the default destination for unknown data, many users are rightly cautious about granting microphone access.
           We built this tuner and metronome tooling with a different philosophy: <strong>your audio stays on your device.</strong> This article explains how and why.
         </p>
 
         <h2 className="text-3xl font-bold mt-8 mb-4">What is client-side audio processing?</h2>
         <p>
           Client-side audio processing means that audio capture, analysis, and feature extraction (pitch detection, beat detection, spectrogram computation)
-          all happen inside the user's browser or device. No raw audio is uploaded to any remote server for processing. The browser APIs (Web Audio API, AudioWorklet)
+          all happen inside the user&apos;s browser or device. No raw audio is uploaded to any remote server for processing. The browser APIs (Web Audio API, AudioWorklet)
           and local compute (JavaScript + WebAssembly) are used to implement real-time algorithms.
         </p>
 
@@ -74,7 +75,7 @@ export default function LocalProcessingArticle() {
           <li><strong>Capture:</strong> Browser requests microphone access via <code>getUserMedia()</code>.</li>
           <li><strong>Process:</strong> An <code>AudioWorklet</code> or worker performs sample-accurate analysis (YIN, autocorrelation, HPS, etc.).</li>
           <li><strong>Display:</strong> Visual feedback (needle, waveform, tuning bar) is rendered in the UI with low-latency updates.</li>
-          <li><strong>(Optional)</strong> Small telemetry (non-sensitive usage stats) can be sent if the user opts in — never raw audio.</li>
+          <li><strong>(Optional)</strong> Small telemetry (non-sensitive usage stats) can be sent if the user opts in &mdash; never raw audio.</li>
         </ol>
 
         <h2 className="text-3xl font-bold mt-8 mb-4">Why local processing matters</h2>
@@ -120,7 +121,7 @@ node.port.onmessage = (e) => { /* pitch updates */ };`}
         </p>
         <ul className="list-disc pl-6 mb-6">
           <li><strong>Buffer size:</strong> smaller buffers = lower latency but more CPU. Choose defaults based on device type.</li>
-          <li><strong>Algorithm quality:</strong> allow the user to select \"Studio\" (high quality, higher CPU) or \"Live\" (fast, light smoothing).</li>
+          <li><strong>Algorithm quality:</strong> allow the user to select &quot;Studio&quot; (high quality, higher CPU) or &quot;Live&quot; (fast, light smoothing).</li>
           <li><strong>WASM acceleration:</strong> heavy DSP (e.g., high-resolution FFTs) can be compiled to WASM for large speedups on desktop.</li>
         </ul>
 
@@ -139,28 +140,27 @@ node.port.onmessage = (e) => { /* pitch updates */ };`}
           <ol className="list-decimal ml-6">
             <li>Declare microphone use clearly in the UI before calling <code>getUserMedia()</code>.</li>
             <li>Document what data (if any) is sent to servers; prefer aggregated non-sensitive telemetry.</li>
-            <li>Provide an explicit toggle for any opt-in cloud features (e.g., "Upload recordings").</li>
+            <li>Provide an explicit toggle for any opt-in cloud features (e.g., &quot;Upload recordings&quot;).</li>
             <li>Open-source critical parts so auditors can confirm no hidden uploads.</li>
           </ol>
         </div>
 
-        <h2 className="text-3xl font-bold mt-8 mb-4">Testing & validation</h2>
+        <h2 className="text-3xl font-bold mt-8 mb-4">Testing &amp; validation</h2>
         <p>
           Test on a matrix of devices (desktop, mid-range phone, low-end phone), browsers (Chromium, Safari, Firefox), and under constrained CPU conditions (other tabs open).
           Include automated unit tests for DSP functions (frequency detection, windowing), and smoke tests that verify the UI responds when a mock audio stream is injected.
         </p>
 
-        <h2 className="text-3xl font-bold mt-8 mb-4">Battery & mobile tip</h2>
+        <h2 className="text-3xl font-bold mt-8 mb-4">Battery &amp; mobile tip</h2>
         <p>
           Mobile devices throttle background work aggressively. To give the best mobile experience:
         </p>
         <ul className="list-disc pl-6 mb-6">
-          <li>Keep UI rendering efficient (avoid per-sample DOM updates — batch at animation frames).</li>
+          <li>Keep UI rendering efficient (avoid per-sample DOM updates &mdash; batch at animation frames).</li>
           <li>Allow users to disable visualizers to save battery during long practice sessions.</li>
         </ul>
 
         <hr className="my-8" />
-
 
         <hr className="my-8" />
 
@@ -168,7 +168,7 @@ node.port.onmessage = (e) => { /* pitch updates */ };`}
         <div className="bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-600 p-8 mt-8 rounded-r-lg">
           <h3 className="text-2xl font-bold mb-2">Want to see the code?</h3>
           <p className="mb-4">
-            We publish the core audio worklet and DSP helpers in our public repo. If you're building similar tools and want pointers or a code review, <Link href="/contact" className="underline font-bold">contact us</Link>.
+            We publish the core audio worklet and DSP helpers in our public repo. If you&apos;re building similar tools and want pointers or a code review, <Link href="/contact" className="underline font-bold">contact us</Link>.
           </p>
           <div className="flex gap-4">
             <Link href="/resources" className="px-6 py-3 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700">Browse Resources</Link>
@@ -182,7 +182,7 @@ node.port.onmessage = (e) => { /* pitch updates */ };`}
         <footer className="mt-10 pt-6 border-t">
           <div>
             <p className="font-semibold">Jotham Saiborne</p>
-            <p className="text-sm text-gray-600">Musician & developer. I build practical, privacy-first audio tools for practice and performance.</p>
+            <p className="text-sm text-gray-600">Musician &amp; developer. I build practical, privacy-first audio tools for practice and performance.</p>
           </div>
         </footer>
       </article>
