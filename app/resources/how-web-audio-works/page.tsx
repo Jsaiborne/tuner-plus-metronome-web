@@ -3,7 +3,6 @@
 
 import React from "react";
 import Link from "next/link";
-import Image from "next/image";
 
 export default function HowWebAudioWorks() {
   // Schema for Google (TechArticle)
@@ -12,147 +11,180 @@ export default function HowWebAudioWorks() {
     "@type": "TechArticle",
     "headline": "How Web Audio Tuners Work: The Science of Browser-Based Pitch Detection",
     "url": "https://tunermetronome.com/resources/how-web-audio-works",
-    "description": "A technical deep dive into using the Web Audio API and autocorrelation algorithms to build a real-time instrument tuner in the browser.",
-    "author": {
-      "@type": "Person",
-      "name": "Jotham Saiborne"
-    },
+    "author": { "@type": "Person", "name": "Jotham Saiborne" },
     "datePublished": "2026-01-30",
-    "image": "https://your-domain.com/og-image-tuner.jpg" // Update if you have one, or remove
+    "description": "A deep-dive explanation of how browser-based audio tuners capture, analyse and present pitch information in real-time.",
   };
 
   return (
-    <main className="max-w-3xl mx-auto px-6 py-12">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }}
-      />
+    <main className="max-w-4xl mx-auto px-6 py-12">
+      <script type="application/ld+json">{JSON.stringify(ld)}</script>
 
-      <article className="prose prose-lg dark:prose-invert max-w-none">
-        {/* Header */}
-        <header className="mb-10 text-center">
-          <div className="text-indigo-600 dark:text-indigo-400 font-bold uppercase tracking-wider text-sm mb-3">
-            Engineering & Audio
-          </div>
+      <article className="prose lg:prose-xl dark:prose-invert">
+        {/* Single hero image placed above the title */}
+        <div className="w-full rounded-lg overflow-hidden mb-8 shadow-sm">
+          <img
+            src="/images/Digital tuner with waveform and spectrum.png"
+            alt="Illustration: waveform and tuner interface"
+            width="1200"
+            height="630"
+            loading="eager"
+            className="w-full h-auto object-cover"
+          />
+        </div>
+
+        <header>
           <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-gray-100 mb-6 leading-tight">
             How Web Audio Tuners Work: The Science of Pitch Detection
           </h1>
-          <div className="flex items-center justify-center space-x-4 text-gray-500 text-sm">
+          <div className="flex items-center justify-start space-x-4 text-gray-500 text-sm">
             <span>By <strong>Jotham Saiborne</strong></span>
             <span>•</span>
-            <span>8 min read</span>
+            <span>Estimated read: 12 min</span>
             <span>•</span>
             <time>January 30, 2026</time>
           </div>
         </header>
 
-        {/* Introduction */}
-        <p className="lead text-xl text-gray-600 dark:text-gray-300 mb-8">
-          Until recently, tuning a guitar required a physical device or a native mobile app. But with the evolution of the <strong>Web Audio API</strong>, modern browsers like Chrome and Firefox can now process real-time audio with near-native performance.
-        </p>
-
-        <p>
-          As a developer and musician, I built this <Link href="/" className="text-indigo-600 underline">Tuner + Metronome</Link> to see if I could replicate the precision of a hardware tuner using only JavaScript. The result is a system that processes microphone input locally, ensuring zero network latency and total privacy. Here is a look under the hood at how it works.
-        </p>
-
-        <hr className="my-10 border-gray-200 dark:border-gray-800" />
-
-        {/* Section 1: Capturing Audio */}
-        <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-12 mb-4">
-          1. Capturing the Sound Wave
-        </h2>
-        <p>
-          The first step is accessing the user's microphone. In the browser, we use `navigator.mediaDevices.getUserMedia`. This prompts the user for permission—a critical security step—and returns a `MediaStream`.
-        </p>
-        <p>
-          Once we have the stream, we create an <strong>AudioContext</strong>. Think of the AudioContext as a virtual patch bay where we can wire together different audio nodes. We connect the microphone (SourceNode) to an <strong>AnalyserNode</strong>, which allows us to peek at the raw audio data in real-time.
-        </p>
-
-        <div className="bg-gray-100 dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-800 text-sm font-mono overflow-x-auto my-6">
-          <p className="text-gray-500 mb-2">{'// Simplified Audio Setup'}</p>
-          <p>const audioCtx = new window.AudioContext();</p>
-          <p>const analyser = audioCtx.createAnalyser();</p>
-          <p>const source = audioCtx.createMediaStreamSource(stream);</p>
-          <p>source.connect(analyser);</p>
-        </div>
-
-        {/* Section 2: Time Domain vs. Frequency Domain */}
-        <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-12 mb-4">
-          2. The Problem with FFT
-        </h2>
-        <p>
-          Most developers instinctively reach for the <strong>Fast Fourier Transform (FFT)</strong> when dealing with audio. FFT converts a signal from the time domain (amplitude over time) to the frequency domain (loudness of specific frequencies).
-        </p>
-        
-
-{/* Image: time domain vs frequency domain signal graph */}
-
-        <p>
-          While FFT is great for visualizers, it has a "resolution" problem for tuners. The gaps between "bins" in an FFT can be too wide to distinguish between a slightly sharp or flat note, especially at low frequencies (like a bass guitar&apos;s low E). For a professional tuner, we need more precision.
-        </p>
-
-       {/* Section 3: Autocorrelation */}
-<h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-12 mb-4">
-  3. The Solution: Autocorrelation
-</h2>
-<p>
-  Instead of looking at frequencies directly, we use an algorithm called <strong>Autocorrelation</strong>. This technique works in the time domain.
-</p>
-<p>
-  Imagine taking a waveform and sliding a copy of it over itself. When the copy lines up perfectly with the original repeating pattern, the signals "correlate" strongly. The distance (in time) between these peak correlations tells us the <strong>period</strong> of the wave.
-</p>
-<p>
-  Once we know the period ($T$), calculating the frequency ($f$) is simple physics:
-</p>
-
-{/* Wrapping in quotes/braces stops TypeScript from looking for a variable named T */}
-<div className="my-6 text-center text-2xl font-serif italic text-gray-800 dark:text-gray-200">
-  {"$$ f = \\frac{1}{T} $$"}
-</div>
-
-<p>
-  This method is incredibly robust for monophonic instruments (like a single guitar string) because it ignores a lot of the harmonic noise that confuses simple FFTs.
-</p>
-
-        {/* Section 4: Privacy & Performance */}
-        <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-12 mb-4">
-          4. Why Local Processing Matters
-        </h2>
-        <p>
-          One of the core architectural decisions for this app was to process everything client-side using <strong>AudioWorklets</strong>.
-        </p>
-        <ul className="list-disc pl-6 space-y-2 mb-6">
-          <li>
-            <strong>Latency:</strong> Sending audio to a server takes 100ms+. Local processing takes &lt;5ms. This responsiveness is non-negotiable for tuning.
-          </li>
-          <li>
-            <strong>Privacy:</strong> Because the code runs in your browser, your microphone data <em>never</em> leaves your device. There is no cloud recording or data mining of your practice sessions.
-          </li>
-        </ul>
-
-        {/* Conclusion */}
-        <div className="bg-indigo-50 dark:bg-indigo-900/20 border-l-4 border-indigo-600 p-6 mt-12 rounded-r-lg">
-          <h3 className="text-xl font-bold text-indigo-900 dark:text-indigo-100 mb-2">
-            Try it yourself
-          </h3>
-          <p className="text-indigo-800 dark:text-indigo-200 mb-4">
-            Now that you know how the technology works, give it a try. The tuner is free, private, and ready to use.
+        {/* Top summary */}
+        <section className="mt-6">
+          <p className="lead text-lg text-gray-600 dark:text-gray-300 mb-6">
+            Browser-based tuners are now accurate enough for everyday musicians and many teachers. This article
+            explains the full signal chain — from microphone access to the pitch algorithms (autocorrelation, YIN,
+            and hybrid methods), common trade-offs, and best practices for building reliable, low-latency tuners that
+            run in modern browsers.
           </p>
-          <Link 
-            href="/" 
-            className="inline-block bg-indigo-600 text-white font-medium px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            Launch Tuner
-          </Link>
-        </div>
+        </section>
 
+        <hr className="my-8" />
+
+        {/* Section: Capturing Audio */}
+        <section>
+          <h2 className="text-3xl font-bold mt-8 mb-4">1. Capturing the Sound Wave</h2>
+          <p>
+            The first step is to request microphone permission via <code>navigator.mediaDevices.getUserMedia</code>.
+            Modern browsers require a secure origin (HTTPS) and explicit user consent. Once granted, the API returns a
+            <code>MediaStream</code> which can be used as a source in the Web Audio API.
+          </p>
+
+          <p>
+            Typical low-latency setups create a single shared <code>AudioContext</code> and then a
+            <code>MediaStreamAudioSourceNode</code> connected to an <code>AnalyserNode</code> or an
+            <code>AudioWorklet</code>. For production-ready apps prefer <code>AudioWorklet</code> for sample-accurate
+            processing and to avoid main-thread jitter. Below is a simplified setup (already present in the app):
+          </p>
+
+          <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded text-sm overflow-auto font-mono">
+{`const audioCtx = new AudioContext();
+const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+const source = audioCtx.createMediaStreamSource(stream);
+const analyser = audioCtx.createAnalyser();
+source.connect(analyser);`}
+          </pre>
+
+          <p>
+            Notes: Always create a single AudioContext and reuse it. Creating multiple contexts increases memory and can
+            cause inconsistent behavior on some devices (especially mobile). Consider showing clear UI feedback when the
+            microphone is in use and an easy way for users to revoke permission or switch input devices.
+          </p>
+        </section>
+
+        <hr className="my-8" />
+
+        {/* Section: Time vs Frequency */}
+        <section>
+          <h2 className="text-3xl font-bold mt-8 mb-4">2. Time Domain vs Frequency Domain</h2>
+
+          <p>
+            A common early optimization is to take an FFT of the signal and look for peaks. FFT-based methods work well
+            for visualizers and spectrograms, but for precise single-pitch detection they have limitations: frequency
+            resolution, windowing artifacts, and the need for zero-padding or very long windows to resolve low notes.
+          </p>
+
+          <p>
+            Time-domain techniques (autocorrelation, YIN) analyse the waveform structure directly and often give better
+            pitch accuracy and stability for monophonic sources (single note at a time). Many modern tuners use a
+            hybrid approach: a fast FFT to get a coarse estimate and a time-domain method to refine the pitch.
+          </p>
+        </section>
+
+        <hr className="my-8" />
+
+        {/* Section: Algorithms deep dive */}
+        <section>
+          <h2 className="text-3xl font-bold mt-8 mb-4">3. Algorithms: Autocorrelation, YIN and Hybrids</h2>
+
+          <p>
+            <strong>Autocorrelation</strong> finds repeating patterns in the waveform. It's robust and conceptually simple
+            but can be computationally expensive for large buffers. It's great for steady, sustained tones like bowed
+            strings.
+          </p>
+
+          <p>
+            <strong>YIN</strong> improves on autocorrelation by explicitly estimating the period and using parabolic
+            interpolation to give sub-sample accuracy. YIN includes internal steps to reduce octave errors and handle
+            noisy signals better.
+          </p>
+
+          <p>
+            <strong>Hybrid approaches</strong> combine a coarse FFT (cheap) with a time-domain refinement (accurate).
+            This is especially useful on low-power devices where doing a full high-resolution autocorrelation each frame
+            may be too heavy.
+          </p>
+
+          <p>
+            Implementation tip: process audio in small overlapping buffers (e.g. 1024–4096 samples at 48kHz) and use a
+            rolling median to smooth pitch readings. Provide a user-adjustable smoothing slider in the UI for "Studio"
+            vs "Live" modes — musicians often prefer different latencies and smoothing tradeoffs.
+          </p>
+        </section>
+
+        <hr className="my-8" />
+
+        {/* Section: Practical engineering */}
+        <section>
+          <h2 className="text-3xl font-bold mt-8 mb-4">4. Practical Engineering & Testing</h2>
+
+          <ul>
+            <li>
+              <strong>Latency:</strong> Keep audio buffer sizes as small as practical. Offer an option to use an
+              <code>AudioWorklet</code> for lower latency.
+            </li>
+            <li>
+              <strong>Noise handling:</strong> Add a gate or minimum amplitude threshold so the algorithm ignores silence
+              and background noise.
+            </li>
+            <li>
+              <strong>Device differences:</strong> Test across a variety of microphones: smartphone built-ins, laptop
+              headsets, and USB mics. Each device has a different frequency response and noise floor.
+            </li>
+            <li>
+              <strong>Accessibility:</strong> include large, colorblind-friendly tuners (avoid red/green-only indicators) and
+              keyboard controls so users can quickly start/stop and change reference pitch.
+            </li>
+          </ul>
+        </section>
+
+       
+
+
+    
+   
+
+        <hr className="my-8" />
+
+        {/* Footer / Author Bio */}
+        <footer className="mt-10 pt-6 border-t">
+          <div>
+            <p className="font-semibold">Jotham Saiborne</p>
+            <p className="text-sm text-gray-600">Musician & developer. I build browser-based audio tools and write about
+            real-time audio engineering.</p>
+          </div>
+        </footer>
       </article>
 
-      {/* Footer Navigation */}
-      <div className="mt-16 pt-8 border-t border-gray-200 dark:border-gray-800 flex justify-between text-sm text-gray-500">
-        <Link href="/resources" className="hover:text-indigo-600">&larr; Back to Resources</Link>
-        <Link href="/metronome" className="hover:text-indigo-600">Try Metronome &rarr;</Link>
-      </div>
+      
+    
     </main>
   );
 }
