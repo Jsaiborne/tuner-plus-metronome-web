@@ -125,7 +125,7 @@ node.port.onmessage = (e) => { /* pitch updates */ };`}
           <li><strong>WASM acceleration:</strong> heavy DSP (e.g., high-resolution FFTs) can be compiled to WASM for large speedups on desktop.</li>
         </ul>
 
-        <h2 className="text-3xl font-bold mt-8 mb-4">Security and trust — what we don't do</h2>
+        <h2 className="text-3xl font-bold mt-8 mb-4">Security and trust — what we don&apos;t do</h2>
         <p>
           Transparency is essential. We explicitly do not:
         </p>
