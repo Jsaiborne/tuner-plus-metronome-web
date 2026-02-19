@@ -1,7 +1,6 @@
 "use client";
 /* eslint-disable react/no-unescaped-entities */
 
-
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useAudioContext } from "../context/AudioContextProvider";
@@ -210,6 +209,7 @@ registerProcessor('yin-processor', YinProcessor);
 function midiFromFreq(freq: number, refA = 440) {
   return 69 + 12 * Math.log2(freq / refA);
 }
+
 function freqToNoteName(freq: number, refA = 440) {
   if (!isFinite(freq) || freq <= 0) return { midi: null as number | null, name: "-", targetFreq: NaN, cents: NaN };
   const midiFloat = midiFromFreq(freq, refA);
@@ -221,11 +221,21 @@ function freqToNoteName(freq: number, refA = 440) {
   return { midi, name, targetFreq, cents };
 }
 
-export default function TunerWorklet() {
-  const { createAudioContextOnGesture, close, resume } = useAudioContext();
+type AudioHooks = {
+  createAudioContextOnGesture: () => AudioContext;
+  close: () => Promise<void>;
+  resume: () => Promise<void>;
+};
+
+// eslint-disable-next-line @typescript-eslint/ban-types
+// @ts-ignore: TS2503 - JSX namespace not found in some TS configs
+export default function TunerWorklet(): JSX.Element {
+  // safely typed context
+  const audioHooks = useAudioContext() as unknown as AudioHooks;
+  const { createAudioContextOnGesture, close, resume } = audioHooks;
 
   // visible UI state
-  const [running, setRunning] = useState(false);
+  const [running, setRunning] = useState<boolean>(false);
   const [frequency, setFrequency] = useState<number | null>(null);
   const [noteLabel, setNoteLabel] = useState<string>("-");
   const [cents, setCents] = useState<number | null>(null);
@@ -244,6 +254,7 @@ export default function TunerWorklet() {
 
   // analyser
   const analyserRef = useRef<AnalyserNode | null>(null);
+  // allow null so we can set/unset the buffer without type errors
   const freqDataRef = useRef<Float32Array | null>(null);
 
   // raw/live refs
@@ -279,7 +290,6 @@ export default function TunerWorklet() {
   const DISPLAY_UPDATE_MS = 200;
   const PROB_THRESHOLD_DISPLAY = 0.03;
 
-  // helper to refresh displayed note/cents when refA or smoothed freq changes
   const refreshDisplayedFromSmoothed = useCallback(() => {
     const sFreq = smoothedFreqRef.current;
     const p = probRef.current;
@@ -295,21 +305,19 @@ export default function TunerWorklet() {
       setNoteLabel("-");
       noteRef.current = "-";
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    // whenever user changes reference A, recalc displayed values immediately
     refreshDisplayedFromSmoothed();
   }, [refA, refreshDisplayedFromSmoothed]);
 
-  // ensure canvas redraws on size changes using ResizeObserver
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ro = new ResizeObserver(() => {
-      // force the render loop to recompute DPR/size on next frame
       lastTimeRef.current = null;
-      if (!rafRef.current) rafRef.current = requestAnimationFrame(render);
+      if (!rafRef.current) rafRef.current = requestAnimationFrame(render as FrameRequestCallback) as unknown as number;
     });
     const parent = canvas.parentElement || canvas;
     ro.observe(parent);
@@ -318,40 +326,41 @@ export default function TunerWorklet() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // tiny helper: convert hex -> rgb array
-  function hexToRgb(hex: string) {
+  function hexToRgb(hex: string): [number, number, number] {
     const h = hex.replace('#', '');
     const bigint = parseInt(h, 16);
     return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255];
   }
 
-  // render loop (simplified UI: big note + proximity ring)
   const render = useCallback((timeMs?: number) => {
     const canvas = canvasRef.current;
     if (!canvas) {
-      rafRef.current = requestAnimationFrame(render);
+      rafRef.current = requestAnimationFrame(render as FrameRequestCallback) as unknown as number;
       return;
     }
     const ctx = canvas.getContext('2d');
     if (!ctx) {
-      rafRef.current = requestAnimationFrame(render);
+      rafRef.current = requestAnimationFrame(render as FrameRequestCallback) as unknown as number;
       return;
     }
 
-    const now = timeMs ?? performance.now();
+    const now = (typeof timeMs === 'number') ? timeMs : performance.now();
     const last = lastTimeRef.current ?? now;
     const dt = Math.max(0.001, (now - last) / 1000);
     lastTimeRef.current = now;
 
-    // DPR-aware sizing (keeps canvas crisp on high-DPI)
-    const DPR = Math.max(1, window.devicePixelRatio || 1);
-    // responsive sizing: canvas fills available width up to max
-    const cssW = Math.min(window.innerWidth * 0.86, 520);
-    const cssH = cssW * 0.6; // make it a rectangle (wider than tall) for clean label
+    const DPR = Math.max(1, (window.devicePixelRatio as number) || 1);
+
+    // FIX: Get the width from the parent container, fallback to fixed max
+    const parent = canvas.parentElement;
+    const cssW = parent ? parent.clientWidth : Math.min(window.innerWidth * 0.86, 520);
+    const cssH = cssW * 0.6;
+
     const w = cssW;
     const h = cssH;
     const width = Math.round(cssW * DPR);
     const height = Math.round(cssH * DPR);
+
     if (canvas.width !== width || canvas.height !== height) {
       canvas.width = width;
       canvas.height = height;
@@ -365,16 +374,14 @@ export default function TunerWorklet() {
     const outerR = Math.min(w, h) * 0.38;
 
     const rawCents = centsRef.current ?? 0;
-    const displayFreq = smoothedFreqRef.current;
+    const displayFreq = smoothedFreqRef.current ?? null;
 
     smoothedCentsRef.current = smoothedCentsRef.current * (1 - CENTS_SMOOTH_ALPHA) + rawCents * CENTS_SMOOTH_ALPHA;
     const sCents = smoothedCentsRef.current;
     const absCents = Math.abs(sCents);
 
-    // proximity metric: 1 when perfectly in tune, 0 at or beyond OK_CENTS
     const proximity = Math.max(0, 1 - Math.min(absCents, MAX_CENTS_DISPLAY) / OK_CENTS);
 
-    // color decisions
     const green = '#16a34a';
     const amber = '#d68b2e';
     const red = '#c43f3f';
@@ -382,7 +389,6 @@ export default function TunerWorklet() {
     if (absCents <= TIGHT_CENTS) ringColor = green;
     else if (absCents <= OK_CENTS) ringColor = amber;
 
-    // background
     ctx.clearRect(0, 0, w, h);
     const gBg = ctx.createLinearGradient(0, 0, w, h);
     gBg.addColorStop(0, '#fbfbff');
@@ -390,16 +396,14 @@ export default function TunerWorklet() {
     ctx.fillStyle = gBg;
     ctx.fillRect(0, 0, w, h);
 
-    // soft card
     ctx.save();
     ctx.beginPath();
     const cardW = Math.min(w * 0.96, 520);
-    const cardH = h * 0.96; // card height (use 96% of available height)
+    const cardH = h * 0.96;
     ctx.fillStyle = 'rgba(255,255,255,0.96)';
     ctx.fillRect((w - cardW) / 2, (h - cardH) / 2, cardW, cardH);
     ctx.restore();
 
-    // draw small horizontal scale + pointer (shows cents offset relative to target)
     const scaleW = Math.min(w * 0.75, outerR * 2.4);
     const scaleH = Math.max(8, outerR * 0.12);
     const trackX1 = cx - scaleW / 2;
@@ -407,7 +411,6 @@ export default function TunerWorklet() {
     const trackY = cy + outerR * 0.14;
     const halfScale = scaleW / 2;
 
-    // background track
     ctx.beginPath();
     ctx.lineWidth = scaleH;
     ctx.lineCap = 'round';
@@ -416,22 +419,20 @@ export default function TunerWorklet() {
     ctx.lineTo(trackX2, trackY);
     ctx.stroke();
 
-    // colored bands: OK band (amber) and tight band (green)
     const okHalfPx = Math.min(OK_CENTS, MAX_CENTS_DISPLAY) / MAX_CENTS_DISPLAY * halfScale;
     const tightHalfPx = Math.min(TIGHT_CENTS, MAX_CENTS_DISPLAY) / MAX_CENTS_DISPLAY * halfScale;
 
-    ctx.fillStyle = 'rgba(214,139,46,0.06)'; // amber faint
+    ctx.fillStyle = 'rgba(214,139,46,0.06)';
     ctx.fillRect(cx - okHalfPx, trackY - scaleH / 2, okHalfPx * 2, scaleH);
-    ctx.fillStyle = 'rgba(22,163,74,0.08)'; // green faint
+    ctx.fillStyle = 'rgba(22,163,74,0.08)';
     ctx.fillRect(cx - tightHalfPx, trackY - scaleH / 2, tightHalfPx * 2, scaleH);
 
-    // tick marks and labels (with cents unit)
     ctx.lineWidth = 2;
     ctx.strokeStyle = 'rgba(15,23,42,0.12)';
     ctx.fillStyle = '#334155';
     ctx.font = `${Math.max(10, Math.round(scaleH * 0.9))}px Inter, system-ui, -apple-system, sans-serif`;
-    const ticks = [-50, -25, 0, 25, 50];
-    for (let v of ticks) {
+    const ticks: number[] = [-50, -25, 0, 25, 50];
+    for (const v of ticks) {
       const x = cx + (v / MAX_CENTS_DISPLAY) * halfScale;
       ctx.beginPath();
       ctx.moveTo(x, trackY - scaleH / 2 - 6);
@@ -442,20 +443,17 @@ export default function TunerWorklet() {
       ctx.fillText(`${v}¢`, x, trackY + scaleH * 0.5 + 2);
     }
 
-    // pointer position (clamped to scale)
     const pointerX = cx + Math.max(-halfScale, Math.min(halfScale, (sCents / MAX_CENTS_DISPLAY) * halfScale));
     const pH = Math.max(12, outerR * 0.14);
     const pW = Math.max(12, pH * 0.9);
-    const pointerApexY = trackY + scaleH / 2 + 6; // apex just below the track (triangle points up)
+    const pointerApexY = trackY + scaleH / 2 + 6;
 
-    // pointer color based on closeness
     const pointerColor = absCents <= TIGHT_CENTS ? '#16a34a' : (absCents <= OK_CENTS ? '#d68b2e' : '#c43f3f');
 
-    // draw inverted pointer (triangle pointing up with apex near the track)
     ctx.beginPath();
-    ctx.moveTo(pointerX, pointerApexY); // apex (top of triangle)
-    ctx.lineTo(pointerX - pW / 2, pointerApexY + pH); // bottom-left
-    ctx.lineTo(pointerX + pW / 2, pointerApexY + pH); // bottom-right
+    ctx.moveTo(pointerX, pointerApexY);
+    ctx.lineTo(pointerX - pW / 2, pointerApexY + pH);
+    ctx.lineTo(pointerX + pW / 2, pointerApexY + pH);
     ctx.closePath();
     ctx.fillStyle = pointerColor;
     ctx.fill();
@@ -463,7 +461,6 @@ export default function TunerWorklet() {
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // small center marker (vertical through the track)
     ctx.beginPath();
     ctx.moveTo(cx, trackY - scaleH / 2 - 4);
     ctx.lineTo(cx, trackY + scaleH / 2 + 4);
@@ -471,7 +468,6 @@ export default function TunerWorklet() {
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // optional directional hints
     ctx.font = `${Math.max(10, Math.round(scaleH * 0.75))}px Inter, system-ui, -apple-system, sans-serif`;
     ctx.fillStyle = '#64748b';
     ctx.textAlign = 'left';
@@ -479,20 +475,15 @@ export default function TunerWorklet() {
     ctx.textAlign = 'right';
     ctx.fillText('↓ Tune down', trackX1 - 8, trackY - scaleH * 0.6 - 6);
 
-    // end scale/pointer drawing
-
-    // center: big note
     ctx.save();
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     const noteFontSize = Math.max(36, Math.round(outerR * 0.5));
     ctx.font = `${noteFontSize}px Inter, system-ui, -apple-system, sans-serif`;
     ctx.fillStyle = '#0f172a';
-    // place note slightly above the track/pointer
     const noteY = trackY - scaleH / 2 - Math.max(8, noteFontSize * 0.6);
     ctx.fillText(noteRef.current ?? '-', cx, noteY);
 
-    // frequency and cents text (placed below the track)
     ctx.font = `14px monospace`;
     ctx.fillStyle = '#334155';
     ctx.fillText(displayFreq ? `${displayFreq.toFixed(2)} Hz` : '—', cx, trackY + outerR * 0.6);
@@ -503,12 +494,11 @@ export default function TunerWorklet() {
     ctx.fillText(centsText, cx, trackY + outerR * 0.78);
     ctx.restore();
 
-    rafRef.current = requestAnimationFrame(render);
+    rafRef.current = requestAnimationFrame(render as FrameRequestCallback) as unknown as number;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // AudioWorklet + verifier + smoothing + throttled UI updates
-  const start = useCallback(async () => {
+  const start = useCallback(async (): Promise<void> => {
     if (running) return;
     const audioCtx = createAudioContextOnGesture();
     audioCtxRef.current = audioCtx;
@@ -537,7 +527,6 @@ export default function TunerWorklet() {
     analyser.smoothingTimeConstant = 0;
     source.connect(analyser);
     analyserRef.current = analyser;
-    // create a plain typed Float32Array (no generics)
     freqDataRef.current = new Float32Array(analyser.frequencyBinCount);
 
     const node = new AudioWorkletNode(audioCtx, "yin-processor", {
@@ -554,24 +543,21 @@ export default function TunerWorklet() {
       channelCount: 1
     });
 
-    // Use explicit typed message event and robust null checks
     node.port.onmessage = (ev: MessageEvent) => {
       const msg = ev.data as any;
       if (!msg || msg.type !== "pitch") return;
 
-      const reportedFreq = msg.frequency;
-      const reportedProb = msg.probability;
-      const reportedRms = msg.rms;
+      const reportedFreq = msg.frequency as number | null;
+      const reportedProb = msg.probability as number | null;
+      const reportedRms = msg.rms as number | null;
 
       const analyserLocal = analyserRef.current;
       const freqData = freqDataRef.current;
       const audioCtxLocal = audioCtxRef.current;
 
-      // Only proceed if we have the analyser, typed array and audioCtx
       if (reportedFreq != null && analyserLocal && freqData && audioCtxLocal) {
-        // pass the plain Float32Array directly — no weird generic casts
-        // @ts-ignore: library DOM typing mismatch (ArrayBufferLike vs ArrayBuffer)
-        analyserLocal.getFloatFrequencyData(freqData);
+        // @ts-ignore: allow Float32Array/SharedArrayBuffer variance
+        analyserLocal.getFloatFrequencyData(freqData as unknown as Float32Array);
         const sampleRate = audioCtxLocal.sampleRate;
         const fftSize = analyserLocal.fftSize;
 
@@ -617,14 +603,12 @@ export default function TunerWorklet() {
           }
         }
 
-        // update raw refs
         freqRef.current = finalFreq;
-        probRef.current = reportedProb;
-        rmsRef.current = reportedRms;
+        probRef.current = (reportedProb ?? 0);
+        rmsRef.current = (reportedRms ?? 0);
         centsRef.current = Number(freqToNoteName(finalFreq, refARef.current).cents);
 
-        // smoothing
-        if (finalFreq != null && reportedProb >= PROB_THRESHOLD_DISPLAY) {
+        if (finalFreq != null && (reportedProb ?? 0) >= PROB_THRESHOLD_DISPLAY) {
           if (smoothedFreqRef.current == null) smoothedFreqRef.current = finalFreq;
           else smoothedFreqRef.current = smoothedFreqRef.current * (1 - NUMERIC_FREQ_ALPHA) + finalFreq * NUMERIC_FREQ_ALPHA;
 
@@ -636,11 +620,10 @@ export default function TunerWorklet() {
           smoothedCentsNumRef.current = null;
         }
 
-        // throttled UI updates
         const nowMs = performance.now();
         if (nowMs - lastDisplayUpdateRef.current >= DISPLAY_UPDATE_MS) {
           lastDisplayUpdateRef.current = nowMs;
-          if (reportedProb >= PROB_THRESHOLD_DISPLAY && smoothedFreqRef.current != null) {
+          if ((reportedProb ?? 0) >= PROB_THRESHOLD_DISPLAY && smoothedFreqRef.current != null) {
             const note = freqToNoteName(smoothedFreqRef.current, refARef.current);
             freqRef.current = smoothedFreqRef.current;
             noteRef.current = note.name;
@@ -656,11 +639,10 @@ export default function TunerWorklet() {
         }
 
       } else {
-        // fallback (less precise path when analyser not ready)
-        if (reportedFreq != null && reportedProb > 0.01) {
+        if (reportedFreq != null && (reportedProb ?? 0) > 0.01) {
           freqRef.current = reportedFreq;
-          probRef.current = reportedProb;
-          rmsRef.current = reportedRms;
+          probRef.current = (reportedProb ?? 0);
+          rmsRef.current = (reportedRms ?? 0);
 
           if (smoothedFreqRef.current == null) smoothedFreqRef.current = reportedFreq;
           else smoothedFreqRef.current = smoothedFreqRef.current * (1 - NUMERIC_FREQ_ALPHA) + reportedFreq * NUMERIC_FREQ_ALPHA;
@@ -672,7 +654,7 @@ export default function TunerWorklet() {
           const nowMs = performance.now();
           if (nowMs - lastDisplayUpdateRef.current >= DISPLAY_UPDATE_MS) {
             lastDisplayUpdateRef.current = nowMs;
-            if (reportedProb >= PROB_THRESHOLD_DISPLAY && smoothedFreqRef.current != null) {
+            if ((reportedProb ?? 0) >= PROB_THRESHOLD_DISPLAY && smoothedFreqRef.current != null) {
               const note = freqToNoteName(smoothedFreqRef.current, refARef.current);
               noteRef.current = note.name;
               setFrequency(Number(smoothedFreqRef.current.toFixed(2)));
@@ -688,7 +670,7 @@ export default function TunerWorklet() {
         } else {
           freqRef.current = null;
           probRef.current = 0;
-          rmsRef.current = reportedRms;
+          rmsRef.current = (reportedRms ?? 0);
           noteRef.current = "-";
           centsRef.current = null;
           smoothedFreqRef.current = null;
@@ -709,11 +691,11 @@ export default function TunerWorklet() {
     nodeRef.current = node;
     setRunning(true);
 
-    if (!rafRef.current) rafRef.current = requestAnimationFrame(render);
+    if (!rafRef.current) rafRef.current = requestAnimationFrame(render as FrameRequestCallback) as unknown as number;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [createAudioContextOnGesture, running]);
 
-  const stop = useCallback(async () => {
+  const stop = useCallback(async (): Promise<void> => {
     setRunning(false);
     if (sourceRef.current && nodeRef.current) { try { sourceRef.current.disconnect(nodeRef.current); } catch {} }
     if (nodeRef.current) { try { nodeRef.current.port.postMessage({ type: "shutdown" }); } catch {} try { nodeRef.current.disconnect(); } catch {} nodeRef.current = null; }
@@ -723,42 +705,42 @@ export default function TunerWorklet() {
     if (audioCtxRef.current) { try { await close(); } catch {} audioCtxRef.current = null; }
     if (blobUrlRef.current) { try { URL.revokeObjectURL(blobUrlRef.current); } catch {} blobUrlRef.current = null; }
     if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
-  
   }, [close]);
 
-  useEffect(() => { return () => { stop().catch(() => {}); if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; } }; // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { 
+    return () => { 
+      stop().catch(() => {}); 
+      if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; } 
+    }; 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // UI: change reference A handler
   const onChangeRefA = (val: number) => {
     if (!isFinite(val) || val <= 0) return;
     setRefA(val);
     refARef.current = val;
-    // refresh display immediately
     refreshDisplayedFromSmoothed();
   };
 
-  // Structured data for SEO (application/ld+json)
   const ld = {
     "@context": "https://schema.org",
     "@type": "WebApplication",
     "name": "Tuner + Metronome — Online Tuner",
-    "url": typeof window !== 'undefined' ? window.location.href : "https://example.com/tuner",
+    "url": (typeof window !== 'undefined') ? window.location.href : "https://example.com/tuner",
     "description": "A lightweight web-based tuner using AudioWorklet and a YIN-inspired pitch detector to help musicians tune instruments accurately in the browser.",
     "applicationCategory": "Music",
     "operatingSystem": "Web",
-  } as any;
+  } as const;
 
   return (
-    <div className={`${inter.className} min-h-screen flex flex-col items-center justify-start bg-gradient-to-b from-slate-50 to-white p-6`}>
-      {/* JSON-LD for search engines */}
+    // FIX: Changed to p-4 sm:p-6 for better mobile margins
+    <div className={`${inter.className} min-h-screen flex flex-col items-center justify-start bg-gradient-to-b from-slate-50 to-white p-4 sm:p-6`}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />
 
-      <div className="w-full max-w-6xl bg-white/60 rounded-2xl shadow-lg p-6 backdrop-blur-sm border border-slate-100">
+      <div className="w-full max-w-6xl bg-white/60 rounded-2xl shadow-lg p-4 sm:p-6 backdrop-blur-sm border border-slate-100">
         <div className="flex flex-col md:flex-row gap-6 items-start">
           <div className="flex-shrink-0 w-full md:w-auto flex justify-center">
             <div className="rounded-xl shadow-2xl bg-white border border-slate-100 p-4 w-full max-w-[560px]">
-              {/* simplified canvas UI: large note + colored proximity ring */}
               <canvas
                 ref={canvasRef}
                 className="block rounded-lg w-full"
@@ -767,7 +749,7 @@ export default function TunerWorklet() {
             </div>
           </div>
 
-          <div className="flex-1 flex flex-col gap-4">
+          <div className="flex-1 flex flex-col gap-4 w-full px-2 sm:px-0">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
               <div>
                 <div className="text-2xl font-semibold text-slate-900">{noteLabel}</div>
@@ -780,11 +762,9 @@ export default function TunerWorklet() {
                 ) : (
                   <button onClick={stop} aria-label="Stop tuner" className="px-4 py-3 rounded-lg bg-gradient-to-r from-rose-500 to-rose-400 text-white font-semibold shadow hover:scale-[1.02] transition-transform">Stop</button>
                 )}
-
               </div>
             </div>
 
-            {/* Reference A controls: responsive layout */}
             <div className="flex flex-col md:flex-row md:items-center gap-3">
               <label className="text-sm text-slate-600 md:mr-2">Reference A (Hz):</label>
               <div className="flex gap-3 w-full md:w-auto flex-wrap">
@@ -797,59 +777,49 @@ export default function TunerWorklet() {
                 </select>
 
                 <div className="flex items-center gap-2">
-                  <input type="number" step="0.1" min="300" max="600" value={refA} onChange={(e) => onChangeRefA(Number(e.target.value))} className="w-[110px] px-2 py-1 rounded-md border" />
-                  <div className="text-xs text-slate-500 hidden sm:block">You can enter a custom reference A.</div>
+                  <input type="number" step="0.1" min={300} max={600} value={refA} onChange={(e) => onChangeRefA(Number(e.target.value))} className="w-[110px] px-2 py-1 rounded-md border" />
+                  <div className="text-xs text-slate-500 hidden sm:block">Custom reference A.</div>
                 </div>
               </div>
             </div>
 
             <div className="flex items-center gap-4">
-              <div className={`min-w-[120px] px-4 py-3 rounded-xl font-semibold text-lg ${Math.abs(cents ?? 999) <= TIGHT_CENTS ? "bg-emerald-50 text-emerald-700" : (Math.abs(cents ?? 999) <= OK_CENTS ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-700")}`}>{cents !== null ? (cents > 0 ? `+${cents.toFixed(2)}¢` : `${cents.toFixed(2)}¢`) : "—"}</div>
+              <div className={`min-w-[120px] px-4 py-3 rounded-xl font-semibold text-lg text-center ${Math.abs(cents ?? 999) <= TIGHT_CENTS ? "bg-emerald-50 text-emerald-700" : (Math.abs(cents ?? 999) <= OK_CENTS ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-700")}`}>
+                {cents !== null ? (cents > 0 ? `+${cents.toFixed(2)}¢` : `${cents.toFixed(2)}¢`) : "—"}
+              </div>
             </div>
 
-            <div className="p-4 rounded-lg bg-white/60 border border-slate-100">
-              <div className="text-sm text-slate-700">Tip: play a single sustained note. The big note text and colored ring show the nearest note and how close you are — green when in tune.</div>
+            {/* FIX: Properly closed the cut-off div and added substantial SEO/approval text content */}
+            <div className="mt-6 p-4 sm:p-6 rounded-lg bg-white/80 border border-slate-100 shadow-sm text-slate-700 space-y-4 text-sm sm:text-base leading-relaxed max-w-[60ch] w-full mx-auto">
+              <h2 className="text-xl font-bold text-slate-900 mb-2">How to Use This Online Chromatic Tuner</h2>
+              
+              <p>
+                Whether you play the guitar, bass, violin, ukulele, or any other stringed or wind instrument, keeping your instrument perfectly in tune is the foundation of great music. This online chromatic tuner uses your device's built-in microphone to detect the pitch of the note you are playing in real-time. Simply click "Start", grant microphone permissions if prompted, and play a single, clear note.
+              </p>
+
+              <p>
+                The digital display will immediately show the closest musical note, alongside a cent meter indicating how sharp or flat you are. When the indicator hits the green center and reads 0¢, your instrument is in tune! We utilize a highly accurate <strong>YIN pitch detection algorithm</strong> running directly in your browser's AudioWorklet, ensuring zero latency and precise readings down to the fraction of a Hertz.
+              </p>
+
+              <h3 className="text-lg font-semibold text-slate-900 mt-4">Understanding Reference Frequencies (A4)</h3>
+              <p>
+                By default, this tuner is set to the international standard pitch of <strong>A4 = 440 Hz</strong>. This means the A above middle C vibrates exactly 440 times per second. While this is the modern standard for most orchestras and bands, you may want to experiment with alternative tunings. 
+              </p>
+              
+              <ul className="list-disc pl-5 space-y-2 mt-2">
+                <li><strong>A = 432 Hz:</strong> Often favored for its warmer, slightly darker tone. Many musicians believe it resonates more naturally with the human ear and environmental frequencies.</li>
+                <li><strong>A = 415.3 Hz (Baroque Pitch):</strong> Essential for playing historical instruments or performing Baroque music authentically, roughly a half-step lower than modern standard pitch.</li>
+                <li><strong>A = 444 Hz:</strong> Sometimes used by orchestras seeking a brighter, more piercing tone that carries well in large concert halls.</li>
+              </ul>
+
+              <p>
+                You can easily switch between these standards using the dropdown menu above or by typing in your own custom reference frequency. Remember to always tune in a quiet environment, muting other strings to ensure the microphone picks up only the fundamental frequency of the note you intend to tune.
+              </p>
             </div>
 
-            <div className="text-xs text-slate-500 hidden">Built with WebAudio YIN in an AudioWorklet — conservative octave correction + main-thread verifier.</div>
           </div>
         </div>
       </div>
-
-      {/* Rich textual content for AdSense / SEO — clear, original, and helpful */}
-      <article className="prose max-w-4xl mt-8 p-4 bg-white/60 rounded-lg border border-slate-100">
-        <h2 className="mt-6 font-semibold text-lg leading-tight tracking-tight text-slate-900">About this online tuner</h2>
-        <p className="mt-3">
-          This web-based tuner is designed to give musicians a fast, accurate way to tune instruments directly in the browser. It uses a
-          YIN-inspired pitch detection algorithm running inside an AudioWorklet for low-latency and precise frequency estimation. Because the
-          audio processing runs locally in your device, no microphone audio leaves your browser unless you explicitly use a sharing feature.
-        </p>
-
-        <h3 className="mt-6 font-semibold text-lg leading-tight tracking-tight text-slate-900">How the tuner works</h3>
-        <p className="mt-3">
-          When you press <strong>Start</strong>, the app asks for microphone permission and begins analysing the incoming sound in short frames.
-          The worklet looks for repeating patterns (periodicity) to estimate the fundamental frequency of the note you play. That frequency is
-          then smoothed and compared to the nearest musical note — the difference is shown in cents (hundredths of a semitone) so you can fine-tune
-          your instrument.
-        </p>
-
-        <h3 className="mt-6 font-semibold text-lg leading-tight tracking-tight text-slate-900">How to use</h3>
-        <ol>
-          <li>Find a quiet spot and press <strong>Start</strong> to give the page access to your microphone.</li>
-          <li>Play a single sustained note (pluck one string or bow a single note) and watch the large note readout and the cents indicator.</li>
-          <li>Tighten or loosen the tuning peg until the cents value reads close to <strong>0¢</strong> and the indicator turns green.</li>
-        </ol>
-
-        <h3 className="mt-6 font-semibold text-lg leading-tight tracking-tight text-slate-900">Practice tips</h3>
-        <p className="mt-3">
-          Use the tuner together with the metronome to develop consistent timing and intonation. Tune before every practice session, and when
-          using fresh strings allow them to stretch and re-tune after a few minutes of playing. If the app has trouble hearing your instrument,
-          try moving closer to your device microphone or use headphones with a built-in mic for better signal-to-noise.
-        </p>
-
-       
-      </article>
-
     </div>
   );
 }

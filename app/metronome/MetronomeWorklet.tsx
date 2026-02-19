@@ -1,7 +1,6 @@
 "use client";
 /* eslint-disable react/no-unescaped-entities */
 
-
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createWorker } from "./MetronomeWorker";
@@ -18,9 +17,9 @@ const MetronomeWorklet: React.FC = () => {
   // UI state
   const [unlocked, setUnlocked] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [current16thNoteState, setCurrent16thNoteState] = useState(0); // internal tick index
+  const [current16thNoteState, setCurrent16thNoteState] = useState(0); 
   const [tempo, setTempo] = useState(120.0);
-  const [lookahead, setLookAhead] = useState(25.0); // milliseconds interval that worker sends ticks
+  const [lookahead, setLookAhead] = useState(25.0); 
   const [scheduleAheadTime, setScheduleAheadTime] = useState(0.1);
   const [nextNoteTimeState, setNextNoteTimeState] = useState(0);
   const [noteResolution, setNoteResolution] = useState(0);
@@ -39,7 +38,7 @@ const MetronomeWorklet: React.FC = () => {
   const audioContextRef = useRef<AudioContext | null>(null);
   const workerRef = useRef<Worker | null>(null);
   const nextNoteTimeRef = useRef<number>(0);
-  const currentTickRef = useRef<number>(0); // corresponds to current16thNoteState exported
+  const currentTickRef = useRef<number>(0); 
 
   // refs for avoiding stale closures
   const tempoRef = useRef<number>(tempo);
@@ -58,12 +57,7 @@ const MetronomeWorklet: React.FC = () => {
   useEffect(() => { beatUnitRef.current = beatUnit; }, [beatUnit]);
   useEffect(() => { lookaheadRef.current = lookahead; }, [lookahead]);
 
-  // compute how many subdivisions per beat based on selected resolution
   const subdivisionsPerBeatFor = (resolution: number) => {
-    // 0 = 16th => 4 per beat
-    // 1 = 8th => 2 per beat
-    // 2 = quarter => 1 per beat
-    // 3 = triplet => 3 per beat
     if (resolution === 0) return 4;
     if (resolution === 1) return 2;
     if (resolution === 2) return 1;
@@ -88,17 +82,14 @@ const MetronomeWorklet: React.FC = () => {
     const measureLen = getMeasureLengthInTicks();
     const positionInMeasure = ((tickNumber % measureLen) + measureLen) % measureLen;
 
-    // determine beat boundaries (start of a beat) and measure start
     const isMeasureStart = positionInMeasure === 0;
     const isBeatBoundary = (positionInMeasure % subs) === 0;
 
-    // create basic oscillator tick
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
     gain.connect(ctx.destination);
 
-    // accenting: stronger frequency on measure start, medium on beat, soft for subdivisions/triplet off-beats
     if (isMeasureStart) osc.frequency.value = 920.0;
     else if (isBeatBoundary) osc.frequency.value = 520.0;
     else osc.frequency.value = 260.0;
@@ -113,9 +104,9 @@ const MetronomeWorklet: React.FC = () => {
   }
 
   function advanceNote() {
-    const secondsPerBeat = 60.0 / tempoRef.current; // tempo is BPM of the selected beat unit
+    const secondsPerBeat = 60.0 / tempoRef.current; 
     const subs = subdivisionsPerBeatFor(noteResolutionRef.current);
-    const tickDuration = secondsPerBeat / subs; // time per internal tick
+    const tickDuration = secondsPerBeat / subs; 
 
     nextNoteTimeRef.current += tickDuration;
 
@@ -196,14 +187,12 @@ const MetronomeWorklet: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // keep worker informed of lookahead changes
   useEffect(() => {
     if (workerRef.current) {
       try { workerRef.current.postMessage({ interval: lookahead }); } catch {}
     }
   }, [lookahead]);
 
-  // Tap tempo
   const tapTempo = () => {
     const now = performance.now();
     const arr = tapTimesRef.current;
@@ -235,7 +224,6 @@ const MetronomeWorklet: React.FC = () => {
   const changeBeatUnit = (u: number) => { const allowed = [1,2,4,8,16]; if (allowed.includes(u)) setBeatUnit(u); };
   const resolutionLabel = (r: number) => (r === 2 ? "Quarter" : r === 1 ? "8th" : r === 3 ? "Triplet" : "16th");
 
-  // helpers for drawing
   function describeSector(cx: number, cy: number, r: number, startAngleDeg: number, endAngleDeg: number) {
     const startRad = (Math.PI / 180) * startAngleDeg;
     const endRad = (Math.PI / 180) * endAngleDeg;
@@ -254,7 +242,6 @@ const MetronomeWorklet: React.FC = () => {
   const innerR = 98;
   const anglePerSlice = 360 / Math.max(1, beatsPerMeasure);
 
-  // compute active beat index for highlighting (beat indices, not tick indices)
   const subsForUI = subdivisionsPerBeatFor(noteResolution);
   const activeBeatIndex = isPlaying ? Math.floor(current16thNoteState / subsForUI) % beatsPerMeasure : -1;
 
@@ -284,18 +271,19 @@ const MetronomeWorklet: React.FC = () => {
         .tempo-label { font-size:20px; color: var(--text); font-family:var(--font-poppins); font-weight:600; }
         .tempo-block { display:flex; flex-direction:column; gap:10px; }
         .tempo-slider { width:360px; accent-color: var(--primary); }
-        .tempo-row { display:flex; align-items:center; gap:20px; }
+        .tempo-row { display:flex; align-items:center; gap:20px; flex-wrap: wrap; }
         .tempo-arrows { display:flex; gap:10px; }
         .arrow-btn { width:46px; height:46px; border-radius:10px; border:1px solid rgba(15,23,42,0.06); font-size:18px; background:transparent; cursor:pointer; }
         .tempo-input { width:100px; padding:10px; font-size:18px; }
         .tap-btn { padding:10px 14px; border-radius:10px; border:1px solid rgba(15,23,42,0.06); background:transparent; cursor:pointer; font-size:16px; }
+        .controls-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
         .subdivision-btn { padding:10px 14px; border-radius:10px; font-size:16px; font-family:var(--font-poppins); }
         select { padding:8px 10px; font-size:16px; border-radius:8px; }
 
-        .info-row { width:100%; display:flex; justify-content:space-between; gap:16px; font-size:18px; color:var(--muted); margin-top:6px; }
+        .info-row { width:100%; display:flex; justify-content:space-between; flex-wrap: wrap; gap:16px; font-size:18px; color:var(--muted); margin-top:6px; }
 
-        @media (max-width: 900px) { .metronome-wrapper { padding:24px; gap:20px; } .circle-container { width:360px; height:360px; } .controls { min-width:320px; } .tempo-slider { width:300px; } .center-btn { width:140px; height:140px; } .center-icon { width:48px; height:48px; } .main-row { gap:20px; } }
-        @media (max-width: 640px) { .metronome-wrapper { padding:20px; } .main-row { flex-direction:column; align-items:center; gap:18px; } .circle-container { width:320px; height:320px; } .controls { min-width:unset; width:100%; order:2; align-items:center; padding-top:6px; } .tempo-block { align-items:center; } .tempo-slider { width:92vw; max-width:320px; } .tempo-row { justify-content:center; } .center-btn { width:128px; height:128px; } .center-icon { width:44px; height:44px; } .info-row { flex-direction:column; align-items:center; gap:8px; } }
+        @media (max-width: 900px) { .metronome-wrapper { padding:24px; gap:20px; } .circle-container { width:360px; height:360px; } .controls { min-width:320px; } .tempo-slider { width:100%; max-width:300px; } .center-btn { width:140px; height:140px; } .center-icon { width:48px; height:48px; } .main-row { gap:20px; } }
+        @media (max-width: 640px) { .metronome-wrapper { padding:20px; } .main-row { flex-direction:column; align-items:center; gap:18px; } .circle-container { width:320px; height:320px; } .controls { min-width:unset; width:100%; order:2; align-items:center; padding-top:6px; } .tempo-block { align-items:center; width: 100%; } .tempo-slider { width:92vw; max-width:320px; } .tempo-row { justify-content:center; width: 100%; } .controls-row { justify-content: center; width: 100%; } .center-btn { width:128px; height:128px; } .center-icon { width:44px; height:44px; } .info-row { flex-direction:column; align-items:center; gap:8px; } }
         @media (max-width: 380px) { .circle-container { width:280px; height:280px; } .tempo-slider { width:86vw; } .center-btn { width:112px; height:112px; } .center-icon { width:40px; height:40px; } .arrow-btn { width:40px; height:40px; font-size:16px; } .tempo-input { width:88px; font-size:16px; } }
       `}</style>
 
@@ -356,13 +344,13 @@ const MetronomeWorklet: React.FC = () => {
               <button className="arrow-btn" aria-label="Increase tempo" onClick={() => incrementTempo(1)}>+</button>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div className="controls-row">
               <input aria-label="Tempo BPM" className="tempo-input" type="number" min={20} max={400} value={tempo} onChange={(e) => setTempo(Number(e.target.value))} />
               <button className="tap-btn" onClick={tapTempo} aria-label="Tap tempo">Tap</button>
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <div className="controls-row">
             <div style={{ fontSize: 16, color: 'var(--muted)' }}>Subdivision</div>
             {[0,1,2,3].map((r) => (
               <button key={r} onClick={() => selectResolution(r)} className={`subdivision-btn ${noteResolution === r ? 'bg-[var(--primary)] text-white' : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200'}`}>
@@ -371,7 +359,7 @@ const MetronomeWorklet: React.FC = () => {
             ))}
           </div>
 
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <div className="controls-row">
             <div style={{ fontSize: 16, color: 'var(--muted)' }}>Time signature</div>
             <select aria-label="Beats per measure" value={beatsPerMeasure} onChange={(e) => changeBeatsPerMeasure(Number(e.target.value))}>
               {Array.from({ length: 16 }, (_, i) => i + 1).map((n) => (<option key={n} value={n}>{n}</option>))}
@@ -394,7 +382,6 @@ const MetronomeWorklet: React.FC = () => {
         <div>Current 16th: <strong style={{ fontFamily: 'var(--font-poppins)' }}>{current16thNoteState}</strong></div>
       </div>
 
-      {/* Rich textual content for AdSense / SEO — clear, original, and helpful */}
       <article className="prose max-w-4xl mt-6 p-4 bg-white/60 rounded-lg border border-slate-100 space-y-6">
         <h2>About this web metronome</h2>
 
@@ -405,30 +392,47 @@ const MetronomeWorklet: React.FC = () => {
           quarter-note grooves to complex polyrhythms.
         </p>
 
+        <h3 className="mt-6 font-semibold text-lg leading-tight tracking-tight text-slate-900">The Importance of Practicing with a Click</h3>
+        <p>
+          A metronome is an absolute necessity for any serious musician. It serves as an impartial judge of your timing, helping you
+          develop a solid internal clock. When you practice consistently with a click track, you build the muscle memory required to keep your
+          performance steady, even during high-pressure live shows. Furthermore, modern recording studios rely heavily on grid-based sessions.
+          Being comfortable playing to a click allows engineers to seamlessly edit takes and layer complex instrumentation without
+          experiencing muddy timing conflicts.
+        </p>
+
         <h3 className="mt-6 font-semibold text-lg leading-tight tracking-tight text-slate-900">How it works (plain language)</h3>
         <p>
-          A small background worker sends regular callback messages (the lookahead). The scheduler uses those ticks to plan
-          future note events slightly ahead of the current audio time so the clicks play with consistent timing even if the
-          main thread is temporarily busy. Notes are generated with short oscillators and gain envelopes to create clean clicks
-          with accents for the downbeat and measure starts.
+          A small background worker sends regular callback messages, which we call the lookahead. The scheduler uses those ticks to plan
+          future note events slightly ahead of the current audio time. This ensures the clicks play with flawless timing even if the
+          main thread of your browser becomes temporarily busy rendering the user interface. Notes are generated utilizing short oscillators
+          and gain envelopes to create crisp audio clicks, featuring built-in accents for the downbeat and measure starts to keep you oriented.
+        </p>
+        
+
+        <h3 className="mt-6 font-semibold text-lg leading-tight tracking-tight text-slate-900">Mechanical vs. Digital Metronomes</h3>
+        <p>
+          Historically, musicians relied on mechanical devices governed by a swinging pendulum and a sliding counterweight to establish tempo.
+          While those physical devices possess an undeniable visual charm, they can eventually suffer from mechanical wear that impacts their precision.
+          A digital web metronome, on the other hand, relies on exact mathematical timing. It never requires winding and offers advanced capabilities—such
+          as distinct beat subdivisions and variable time signatures—that physical clockwork models simply cannot replicate.
         </p>
 
         <h3 className="mt-6 font-semibold text-lg leading-tight tracking-tight text-slate-900">How to use</h3>
         <ol>
-          <li>Press the central Play button to start. Your browser may request audio permission; the metronome runs locally in the browser.</li>
-          <li>Adjust tempo with the slider, arrows, or by entering a BPM value directly.</li>
-          <li>Choose subdivisions (16th, 8th, quarter, triplet) and set the time signature to match the piece you're practicing.</li>
-          <li>Use the Tap button to set tempo by rhythmically tapping a beat.</li>
+          <li>Press the central Play button to start. Your browser may request audio permission; rest assured the metronome runs entirely locally.</li>
+          <li>Adjust the tempo utilizing the slider, arrows, or by typing a specific BPM value directly into the input field.</li>
+          <li>Choose your preferred subdivisions (16th, 8th, quarter, or triplet) and adjust the time signature to match the piece you are practicing.</li>
+          <li>Use the Tap button to determine a tempo by rhythmically tapping the beat.</li>
         </ol>
 
-        <h3 className="mt-6 font-semibold text-lg leading-tight tracking-tight text-slate-900">Practice tips</h3>
+        <h3 className="mt-6 font-semibold text-lg leading-tight tracking-tight text-slate-900">Advanced Practice techniques</h3>
         <p>
-          Start slow and maintain consistent quarter-note placement — speed only after five clean repetitions.
-          Practice with subdivisions to internalize the smallest rhythmic unit, and alternate between playing on the click and
-          leaving space (playing in silence while feeling the click) to improve internal timekeeping.
+          Begin slowly and prioritize consistent quarter-note placement. Increase the speed only after you complete five flawless repetitions.
+          Practice with varied subdivisions to internalize the smallest rhythmic increments. Another excellent exercise involves alternating between
+          playing directly on the click and leaving space—meaning you play in silence while internalizing the beat—which dramatically improves
+          your natural sense of groove.
         </p>
-
-        
       </article>
     </div>
   );
