@@ -227,7 +227,6 @@ type AudioHooks = {
   resume: () => Promise<void>;
 };
 
-// eslint-disable-next-line @typescript-eslint/ban-types
 // @ts-ignore: TS2503 - JSX namespace not found in some TS configs
 export default function TunerWorklet(): JSX.Element {
   // safely typed context
@@ -305,8 +304,7 @@ export default function TunerWorklet(): JSX.Element {
       setNoteLabel("-");
       noteRef.current = "-";
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      }, []);
 
   useEffect(() => {
     refreshDisplayedFromSmoothed();
@@ -323,8 +321,7 @@ export default function TunerWorklet(): JSX.Element {
     ro.observe(parent);
     ro.observe(document.body);
     return () => ro.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      }, []);
 
   function hexToRgb(hex: string): [number, number, number] {
     const h = hex.replace('#', '');
@@ -495,8 +492,7 @@ export default function TunerWorklet(): JSX.Element {
     ctx.restore();
 
     rafRef.current = requestAnimationFrame(render as FrameRequestCallback) as unknown as number;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      }, []);
 
   const start = useCallback(async (): Promise<void> => {
     if (running) return;
@@ -692,8 +688,7 @@ export default function TunerWorklet(): JSX.Element {
     setRunning(true);
 
     if (!rafRef.current) rafRef.current = requestAnimationFrame(render as FrameRequestCallback) as unknown as number;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [createAudioContextOnGesture, running]);
+      }, [createAudioContextOnGesture, running]);
 
   const stop = useCallback(async (): Promise<void> => {
     setRunning(false);
@@ -712,8 +707,7 @@ export default function TunerWorklet(): JSX.Element {
       stop().catch(() => {}); 
       if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; } 
     }; 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      }, []);
 
   const onChangeRefA = (val: number) => {
     if (!isFinite(val) || val <= 0) return;
